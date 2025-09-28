@@ -50,6 +50,34 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y google-chrome-stable
           
+          # Ensure Chromedriver matches installed Chrome version (sync)
+          echo "Sincronizando Chromedriver con la version de Chrome instalada..."
+          CHROME_VER=$(google-chrome-stable --version | sed -E 's/Google Chrome ([0-9]+)\..*/\1/') || CHROME_VER=119
+          echo "Chrome major version detected: $CHROME_VER"
+          CHROMEDRIVER_DIR="/usr/local/share/chromedriver_$CHROME_VER"
+          mkdir -p "$CHROMEDRIVER_DIR"
+
+          # Try to download the matching chromedriver from official storage
+          DRIVER_ZIP="chromedriver_linux64.zip"
+          DRIVER_URL="https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VER/latest/$DRIVER_ZIP"
+          echo "Intentando descargar Chromedriver desde: $DRIVER_URL"
+          if curl -sSfL "$DRIVER_URL" -o "/tmp/$DRIVER_ZIP"; then
+            unzip -q -o "/tmp/$DRIVER_ZIP" -d "$CHROMEDRIVER_DIR"
+            sudo mv -f "$CHROMEDRIVER_DIR/chromedriver" /usr/local/bin/chromedriver
+            sudo chmod +x /usr/local/bin/chromedriver
+            echo "Chromedriver instalado en /usr/local/bin/chromedriver"
+          else
+            echo "Fallo al descargar Chromedriver desde storage principal, usando npm chromedriver (si existe)" || true
+            # If npm chromedriver is present, link it
+            if [ -f "./node_modules/chromedriver/lib/chromedriver/chromedriver" ]; then
+              sudo cp ./node_modules/chromedriver/lib/chromedriver/chromedriver /usr/local/bin/chromedriver
+              sudo chmod +x /usr/local/bin/chromedriver
+              echo "Chromedriver copiado desde node_modules"
+            else
+              echo "No se encontro chromedriver en node_modules. Selenium puede fallar si no hay driver compatible."
+            fi
+          fi
+          
           echo "Instalando dependencias Node.js para Selenium..."
           npm install
           
