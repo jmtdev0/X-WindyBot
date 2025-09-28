@@ -1,6 +1,27 @@
-name: 🚀 Captura Ultra-Rápida (Nativo)
-
-# Configuración de triggers
+name: 🚀 Captura Ultra-Rápida (Nativo)      # 1. Instalar herramientas nativas optimizadas
+      - name: 📦 Instalar herramientas híbridas de captura
+        run: |
+          echo "📦 Actualizando paquetes del sistema..."
+          sudo apt-get update -qq
+          
+          echo "🔧 Instalando Google Chrome (método principal)..."
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+          sudo apt-get update -qq
+          sudo apt-get install -y google-chrome-stable
+          
+          echo "🔧 Instalando wkhtmltopdf (fallback) y dependencias..."
+          sudo apt-get install -y wkhtmltopdf xvfb curl
+          
+          echo "✅ Verificando instalaciones..."
+          google-chrome-stable --version || echo "Chrome no disponible"
+          wkhtmltoimage --version || echo "wkhtmltoimage no disponible"
+          
+          echo "🖥️ Configurando display virtual..."
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+          sleep 3
+          echo "✅ Entorno híbrido configurado correctamente"ón de triggers
 on:
   # 🚫 Ejecución automática temporalmente desactivada para testing
   # schedule:
@@ -105,6 +126,18 @@ jobs:
           
           echo "📊 Resultados:"
           ls -la captures/*.png 2>/dev/null || echo "No hay capturas PNG"
+          
+          echo ""
+          echo "🔍 Análisis de logs de debugging:"
+          if [ -f "chrome_debug.log" ]; then
+            echo "📄 Chrome debug log (últimas 10 líneas):"
+            tail -10 chrome_debug.log
+          fi
+          
+          if [ -f "wkhtmltoimage_debug.log" ]; then
+            echo "📄 wkhtmltoimage debug log (últimas 10 líneas):"
+            tail -10 wkhtmltoimage_debug.log
+          fi
 
       # 5. Verificar cambios
       - name: 🔍 Verificar cambios
