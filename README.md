@@ -171,6 +171,15 @@ En la pestaña **Actions** de GitHub puedes:
 
 ## 🛠️ Solución de Problemas
 
+### Error "Dependencies lock file is not found"
+
+**Síntomas**: El workflow falla con mensaje sobre `package-lock.json` no encontrado.
+
+**Solución**: 
+1. **Ya está corregido** en la versión actual del workflow
+2. El workflow usa automáticamente `npm install` si no existe `package-lock.json`
+3. Se incluye `package-lock.json` en el repositorio para futuras ejecuciones
+
 ### El workflow no se ejecuta automáticamente
 
 1. **Verifica que el repositorio sea público** o que tengas GitHub Pro/Team

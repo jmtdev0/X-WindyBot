@@ -47,21 +47,51 @@ jobs:
 
       # 3. Instalar dependencias
       - name: 📦 Instalar dependencias
-        run: npm ci
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "📋 Usando npm ci (package-lock.json encontrado)"
+            npm ci
+          else
+            echo "📦 Usando npm install (generando package-lock.json)"
+            npm install
+          fi
 
       # 4. Verificar estructura de directorios
-      - name: 📁 Verificar directorios
+      - name: 📁 Verificar directorios y dependencias
         run: |
+          echo "🗋 Verificando estructura del proyecto..."
           mkdir -p captures
-          ls -la captures/ || true
-          echo "Estructura del proyecto:"
-          find . -type f -name "*.js" -o -name "*.json" | head -10
+          echo "📁 Contenido de captures/:"
+          ls -la captures/ || echo "Carpeta captures vacía"
+          
+          echo "📦 Verificando package.json:"
+          cat package.json | head -20
+          
+          echo "🔍 Verificando archivos del proyecto:"
+          find . -maxdepth 2 -type f -name "*.js" -o -name "*.json" -o -name "*.yml" | sort
+          
+          echo "📊 Espacio en disco disponible:"
+          df -h .
 
       # 5. Ejecutar script de captura
       - name: 📸 Ejecutar captura de radar
         run: |
           echo "🚀 Iniciando captura del radar meteorológico..."
+          echo "🔧 Verificando script de captura..."
+          
+          if [ ! -f "scripts/screenshot.js" ]; then
+            echo "❌ Error: No se encuentra scripts/screenshot.js"
+            exit 1
+          fi
+          
+          echo "🌐 Verificando disponibilidad de Chrome..."
+          which google-chrome-stable || which chromium-browser || echo "⚠️  Chrome no encontrado en PATH"
+          
+          echo "✅ Script encontrado, ejecutando captura..."
           npm run screenshot
+          
+          echo "📸 Captura completada, verificando resultados..."
+          ls -la captures/ || echo "No se generaron capturas"
         env:
           # Variables de entorno para Puppeteer en CI
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: false
@@ -71,25 +101,33 @@ jobs:
       - name: 🔍 Verificar cambios
         id: verify-changes
         run: |
+          echo "🔍 Verificando estado del repositorio..."
+          
+          # Mostrar estado actual
+          echo "📁 Estado de Git:"
+          git status
+          
+          echo "📈 Contenido actual de captures/:"
+          ls -la captures/ || echo "Carpeta captures vacía"
+          
+          # Contar archivos en captures
+          FILE_COUNT=$(find captures -name "*.png" 2>/dev/null | wc -l)
+          echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
+          echo "📊 Total de capturas encontradas: $FILE_COUNT"
+          
           # Verificar si hay archivos nuevos o modificados
           if git diff --quiet && git diff --staged --quiet; then
-            echo "No hay cambios para commitear"
+            echo "ℹ️  No hay cambios para commitear"
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
-            echo "Se detectaron cambios"
+            echo "✅ Se detectaron cambios"
             echo "has_changes=true" >> $GITHUB_OUTPUT
             
-            # Mostrar estadísticas
             echo "📊 Archivos modificados:"
             git status --porcelain
             
-            echo "📈 Estadísticas de la carpeta captures:"
-            ls -la captures/ | tail -5
-            
-            # Contar archivos en captures
-            FILE_COUNT=$(find captures -name "*.png" | wc -l)
-            echo "Total de capturas: $FILE_COUNT"
-            echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
+            echo "📈 Últimas capturas:"
+            ls -la captures/*.png 2>/dev/null | tail -5 || echo "No hay archivos PNG"
           fi
 
       # 7. Configurar Git (solo si hay cambios)
