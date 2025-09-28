@@ -1,0 +1,185 @@
+name: 🚀 Captura Ultra-Rápida (Nativo)
+
+# Configuración de triggers
+on:
+  # Ejecución automática cada 5 minutos
+  schedule:
+    - cron: '*/5 * * * *'
+  
+  # Permite ejecución manual desde la interfaz de GitHub
+  workflow_dispatch:
+    inputs:
+      cleanup_old_files:
+        description: 'Limpiar archivos antiguos (mantener últimos 100)'
+        required: false
+        default: 'true'
+        type: boolean
+
+# Configuración de permisos
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  capture-radar-native:
+    name: ⚡ Captura Ultra-Rápida con Herramientas Nativas
+    runs-on: ubuntu-latest
+    
+    # Timeout reducido porque es más rápido
+    timeout-minutes: 5
+    
+    steps:
+      # 1. Checkout del repositorio
+      - name: 📥 Checkout repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Instalar herramientas mínimas
+      - name: 📦 Instalar herramientas nativas
+        run: |
+          echo "📦 Actualizando paquetes del sistema..."
+          sudo apt-get update -qq
+          
+          echo "🔧 Instalando wkhtmltopdf y dependencias..."
+          sudo apt-get install -y wkhtmltopdf xvfb curl
+          
+          echo "✅ Verificando instalación..."
+          wkhtmltoimage --version
+          
+          echo "🖥️ Configurando display virtual..."
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+          sleep 2
+          echo "✅ Entorno configurado correctamente"
+
+      # 3. Verificar estructura
+      - name: 📁 Verificar directorios
+        run: |
+          echo "🔍 Verificando estructura del proyecto..."
+          mkdir -p captures
+          ls -la captures/ || echo "Carpeta captures vacía"
+          
+          echo "🌐 Verificando conectividad..."
+          curl -I https://www.windy.com --max-time 10 || echo "⚠️ Problema de conectividad"
+          
+          echo "💾 Espacio disponible:"
+          df -h . | head -2
+
+      # 4. Ejecutar captura ultra-rápida
+      - name: ⚡ Ejecutar captura ultra-rápida
+        run: |
+          echo "🚀 Iniciando captura ultra-rápida..."
+          
+          # Verificar script
+          if [ ! -f "scripts/capture-native.sh" ]; then
+            echo "❌ Script nativo no encontrado, usando comando directo..."
+            
+            # Captura directa con wkhtmltoimage
+            TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
+            FILENAME="radar_${TIMESTAMP}.png"
+            FILEPATH="captures/${FILENAME}"
+            
+            export DISPLAY=:99
+            wkhtmltoimage \
+              --width 1920 \
+              --height 1080 \
+              --format png \
+              --quality 90 \
+              --javascript-delay 3000 \
+              --no-stop-slow-scripts \
+              "https://www.windy.com/-Weather-radar-radar?radar,39.853,-3.807,7" \
+              "$FILEPATH"
+              
+            echo "✅ Captura completada: $FILENAME"
+          else
+            echo "✅ Usando script nativo..."
+            chmod +x scripts/capture-native.sh
+            export DISPLAY=:99
+            ./scripts/capture-native.sh
+          fi
+          
+          echo "📊 Resultados:"
+          ls -la captures/*.png 2>/dev/null || echo "No hay capturas PNG"
+
+      # 5. Verificar cambios
+      - name: 🔍 Verificar cambios
+        id: verify-changes
+        run: |
+          echo "🔍 Verificando estado del repositorio..."
+          
+          # Contar archivos
+          FILE_COUNT=$(find captures -name "*.png" 2>/dev/null | wc -l)
+          echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
+          echo "📊 Total de capturas: $FILE_COUNT"
+          
+          # Verificar cambios
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "ℹ️ No hay cambios para commitear"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Se detectaron cambios"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            
+            echo "📋 Estado de Git:"
+            git status --porcelain
+          fi
+
+      # 6. Limpieza automática
+      - name: 🧹 Limpieza automática
+        if: steps.verify-changes.outputs.has_changes == 'true'
+        run: |
+          cd captures
+          FILE_COUNT=$(find . -name "radar_*.png" | wc -l)
+          
+          if [ "$FILE_COUNT" -gt 100 ]; then
+            echo "🧹 Eliminando archivos antiguos (manteniendo últimos 100)..."
+            find . -name "radar_*.png" -printf '%T@ %p\n' | sort -n | head -n -100 | cut -d' ' -f2- | xargs rm -f
+            NEW_COUNT=$(find . -name "radar_*.png" | wc -l)
+            echo "✅ Limpieza completada. Archivos restantes: $NEW_COUNT"
+          else
+            echo "ℹ️ No necesita limpieza (solo $FILE_COUNT archivos)"
+          fi
+
+      # 7. Configurar Git y commit
+      - name: 💾 Commit y push cambios
+        if: steps.verify-changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action - Ultra Fast Radar"
+          
+          git add captures/
+          
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          FINAL_COUNT=$(find captures -name "radar_*.png" | wc -l)
+          git commit -m "⚡ Captura ultra-rápida del radar - $TIMESTAMP (Total: $FINAL_COUNT capturas)"
+          
+          git push
+
+      # 8. Resumen final
+      - name: 📋 Resumen de ejecución
+        if: always()
+        run: |
+          echo "=== ⚡ RESUMEN ULTRA-RÁPIDO ==="
+          echo "⏰ Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "🔄 Trigger: ${{ github.event_name }}"
+          
+          if [ "${{ steps.verify-changes.outputs.has_changes }}" == "true" ]; then
+            echo "✅ Estado: Captura exitosa y cambios commiteados"
+            echo "📊 Total de capturas: ${{ steps.verify-changes.outputs.file_count }}"
+          else
+            echo "ℹ️ Estado: Ejecución completada, sin cambios"
+          fi
+          
+          echo "📁 Contenido actual:"
+          ls -la captures/ | tail -3 || echo "Sin archivos"
+          
+          echo "💾 Tamaño total:"
+          du -sh captures/ || echo "0B"
+          
+          echo "⚡ Ventajas de esta implementación:"
+          echo "  - Sin dependencias de Node.js"
+          echo "  - Sin descarga de Chromium (150MB+)"
+          echo "  - Instalación en ~30 segundos vs 5+ minutos"
+          echo "  - Uso de herramientas nativas del sistema"

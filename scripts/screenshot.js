@@ -1,11 +1,14 @@
-const puppeteer = require('puppeteer');
+const { exec } = require('child_process');
 const fs = require('fs').promises;
 const path = require('path');
+const util = require('util');
 
 /**
  * Script para capturar screenshots del radar meteorológico de Windy.com
- * Utiliza Puppeteer para automatizar la navegación y captura
+ * Utiliza wkhtmltopdf (más rápido y ligero que Puppeteer)
  */
+
+const execAsync = util.promisify(exec);
 
 const CONFIG = {
   // URL específica del radar de Windy (puedes personalizar esta URL)
@@ -17,18 +20,21 @@ const CONFIG = {
     height: 1080
   },
   
-  // Tiempo de espera para que cargue completamente la página
-  WAIT_TIME: 5000,
+  // Tiempo de espera para que cargue completamente la página (más rápido)
+  WAIT_TIME: 3000,
   
   // Directorio donde guardar las capturas
   CAPTURES_DIR: path.join(__dirname, '..', 'captures'),
   
-  // Selectores CSS para ocultar elementos innecesarios (opcional)
-  ELEMENTS_TO_HIDE: [
-    '#bottom',
-    '.leaflet-control-container',
-    '#menu-hamburger',
-    '.size-button-container'
+  // Opciones para wkhtmltopdf
+  WKHTML_OPTIONS: [
+    '--width', '1920',
+    '--height', '1080', 
+    '--format', 'png',
+    '--quality', '90',
+    '--javascript-delay', '3000',
+    '--no-stop-slow-scripts',
+    '--debug-javascript'
   ]
 };
 
@@ -49,91 +55,57 @@ function generateFileName() {
 }
 
 /**
- * Función principal para capturar el screenshot
+ * Función principal para capturar el screenshot usando wkhtmltopdf
  */
 async function captureRadarScreenshot() {
   console.log('🚀 Iniciando captura del radar meteorológico...');
-  
-  let browser;
   
   try {
     // Verificar que existe el directorio de capturas
     await fs.mkdir(CONFIG.CAPTURES_DIR, { recursive: true });
     
-    // Configurar Puppeteer
-    console.log('📱 Iniciando navegador...');
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ]
-    });
-
-    const page = await browser.newPage();
-    
-    // Configurar viewport
-    await page.setViewport(CONFIG.VIEWPORT);
-    
-    // Configurar user agent para evitar detección de bot
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-    
-    console.log('🌐 Navegando a Windy.com...');
-    
-    // Navegar a la página
-    await page.goto(CONFIG.WINDY_URL, {
-      waitUntil: 'networkidle2',
-      timeout: 30000
-    });
-    
-    console.log('⏳ Esperando a que la página cargue completamente...');
-    
-    // Esperar a que cargue el mapa
-    await page.waitForSelector('#windy-map', { timeout: 20000 });
-    
-    // Esperar tiempo adicional para animaciones y datos
-    await page.waitForTimeout(CONFIG.WAIT_TIME);
-    
-    // Ocultar elementos innecesarios (opcional)
-    for (const selector of CONFIG.ELEMENTS_TO_HIDE) {
-      try {
-        await page.evaluate((sel) => {
-          const element = document.querySelector(sel);
-          if (element) {
-            element.style.display = 'none';
-          }
-        }, selector);
-      } catch (error) {
-        // Ignorar si el elemento no existe
-        console.log(`ℹ️  Elemento no encontrado: ${selector}`);
-      }
+    // Verificar que wkhtmltopdf está disponible
+    console.log('� Verificando wkhtmltopdf...');
+    try {
+      await execAsync('wkhtmltoimage --version');
+      console.log('✅ wkhtmltoimage encontrado');
+    } catch (error) {
+      throw new Error('wkhtmltoimage no está instalado. Instala con: sudo apt-get install wkhtmltopdf');
     }
     
-    console.log('📸 Capturando screenshot...');
+    console.log('🌐 Capturando desde Windy.com...');
     
     // Generar nombre del archivo
     const fileName = generateFileName();
     const filePath = path.join(CONFIG.CAPTURES_DIR, fileName);
     
-    // Capturar screenshot
-    await page.screenshot({
-      path: filePath,
-      fullPage: false,
-      quality: 90,
-      type: 'png'
-    });
+    // Construir comando wkhtmltoimage
+    const wkhtmlCommand = [
+      'wkhtmltoimage',
+      ...CONFIG.WKHTML_OPTIONS,
+      `"${CONFIG.WINDY_URL}"`,
+      `"${filePath}"`
+    ].join(' ');
     
-    console.log(`✅ Screenshot guardado exitosamente: ${fileName}`);
-    console.log(`📍 Ubicación: ${filePath}`);
+    console.log('📸 Ejecutando captura...');
+    console.log(`🔧 Comando: ${wkhtmlCommand}`);
+    
+    // Ejecutar captura
+    const { stdout, stderr } = await execAsync(wkhtmlCommand);
+    
+    if (stderr && !stderr.includes('Warning')) {
+      console.log(`⚠️  Advertencia: ${stderr}`);
+    }
     
     // Verificar que el archivo se creó correctamente
     const stats = await fs.stat(filePath);
+    
+    if (stats.size === 0) {
+      throw new Error('El archivo de captura está vacío');
+    }
+    
+    console.log(`✅ Screenshot guardado exitosamente: ${fileName}`);
+    console.log(`📍 Ubicación: ${filePath}`);
     console.log(`📊 Tamaño del archivo: ${Math.round(stats.size / 1024)} KB`);
     
     return {
@@ -150,12 +122,6 @@ async function captureRadarScreenshot() {
       success: false,
       error: error.message
     };
-    
-  } finally {
-    if (browser) {
-      await browser.close();
-      console.log('🔒 Navegador cerrado');
-    }
   }
 }
 

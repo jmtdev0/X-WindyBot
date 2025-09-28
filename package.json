@@ -15,14 +15,14 @@
     "weather",
     "radar",
     "automation",
-    "puppeteer",
+    "wkhtmltopdf",
     "windy",
     "screenshots"
   ],
   "author": "jmtdev0",
   "license": "MIT",
   "dependencies": {
-    "puppeteer": "^21.3.6"
+    "axios": "^1.6.0"
   },
   "devDependencies": {},
   "engines": {

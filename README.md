@@ -9,7 +9,18 @@ Una herramienta de automatización que utiliza GitHub Actions para capturar scre
 - 🤖 **Puppeteer** para automatizar la navegación y captura de screenshots
 - 📁 **Almacenamiento automático** en la carpeta `captures/` del repositorio 
 - 🔄 **Auto-commit y push** de nuevas capturas
-- 🧹 **Limpieza opcional** de archivos antiguos para mantener el repositorio ligero
+## 🚀 Características
+
+- ⏰ **Captura automática cada 5 minutos** usando GitHub Actions con cron schedule
+- 🖱️ **Ejecución manual** disponible desde la interfaz de GitHub Actions
+- ⚡ **Ultra-rápido** con herramientas nativas (sin Node.js pesado)
+- 🛠️ **Múltiples implementaciones**: 
+  - **Ultra-fast**: wkhtmltopdf + herramientas nativas (~1 min total)
+  - **Node.js**: Script tradicional con wkhtmltopdf (~2-3 min)
+- 📁 **Almacenamiento automático** en la carpeta `captures/` del repositorio 
+- 🔄 **Auto-commit y push** de nuevas capturas al repositorio
+- 🧹 **Limpieza automática** mantiene solo las últimas 100 capturas
+- 📊 **Logging detallado** y resúmenes de ejecución
 - 📊 **Logging detallado** y resúmenes de ejecución
 
 ## 📂 Estructura del Proyecto
@@ -171,18 +182,29 @@ En la pestaña **Actions** de GitHub puedes:
 
 ## 🛠️ Solución de Problemas
 
-### Error "npm ci can only install packages when your package.json and package-lock.json are in sync"
+### Error de timeouts o instalación lenta de dependencias
+
+**Síntomas**: 
+- El workflow tarda más de 5 minutos en npm install
+- Timeouts durante la captura con Puppeteer  
+- Error: "The operation was canceled"
+- Instalación de Chromium (~150MB) muy lenta
+
+**Solución**: 
+1. **🚀 Usa el workflow ultra-rápido** (`capture-ultra-fast.yml`)
+2. **⚡ Sin Node.js pesado** - Solo herramientas nativas del sistema
+3. **🛠️ Sin Chromium** - Usa wkhtmltopdf (mucho más ligero)
+4. **⏱️ Tiempo total** ~1 minuto vs ~8+ minutos
+
+### Error "npm ci can only install packages when your package.json and package-lock.json are in sync" 
 
 **Síntomas**: 
 - El workflow falla durante `npm ci` 
 - Menciona dependencias faltantes en el lock file
-- Error: "Missing: [package]@[version] from lock file"
 
 **Solución**: 
-1. **Ya está corregido** - El workflow ahora usa `npm install` siempre
-2. **Generación automática** - Se genera un `package-lock.json` correcto automáticamente  
-3. **Auto-commit** - El workflow commitea el lock file si es nuevo
-4. **Cache optimizado** - Mejor gestión de dependencias en CI
+1. **Usa el workflow ultra-rápido** que no depende de npm
+2. **O usa la versión Node.js** corregida con `npm install`
 
 ### Error "Dependencies lock file is not found"
 
