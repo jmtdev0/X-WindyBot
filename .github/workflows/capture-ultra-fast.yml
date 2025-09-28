@@ -48,31 +48,46 @@ jobs:
           wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
           sudo apt-get update -qq
-          sudo apt-get install -y google-chrome-stable
+          sudo apt-get install -y google-chrome-stable jq
           
           # Ensure Chromedriver matches installed Chrome version (sync)
           echo "Sincronizando Chromedriver con la version de Chrome instalada..."
-          CHROME_VER=$(google-chrome-stable --version | sed -E 's/Google Chrome ([0-9]+)\..*/\1/') || CHROME_VER=119
-          echo "Chrome major version detected: $CHROME_VER"
-          CHROMEDRIVER_TMP="/tmp/chromedriver_$CHROME_VER"
+          CHROME_VERSION=$(google-chrome-stable --version | sed -E 's/Google Chrome ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+).*/\1/') || CHROME_VERSION=""
+          CHROME_MAJOR=${CHROME_VERSION%%.*}
+          echo "Chrome version detected: ${CHROME_VERSION:-desconocida} (major ${CHROME_MAJOR:-desconocido})"
+          CHROMEDRIVER_TMP="/tmp/chromedriver_$CHROME_MAJOR"
           mkdir -p "$CHROMEDRIVER_TMP"
 
-          # Try to download the matching chromedriver from official storage into /tmp
-          DRIVER_ZIP="chromedriver_linux64.zip"
-          DRIVER_URL="https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VER/latest/$DRIVER_ZIP"
-          echo "Intentando descargar Chromedriver desde: $DRIVER_URL"
-          if curl -sSfL "$DRIVER_URL" -o "/tmp/$DRIVER_ZIP"; then
-            unzip -q -o "/tmp/$DRIVER_ZIP" -d "$CHROMEDRIVER_TMP"
-            if [ -f "$CHROMEDRIVER_TMP/chromedriver" ]; then
-              sudo mv -f "$CHROMEDRIVER_TMP/chromedriver" /usr/local/bin/chromedriver
-              sudo chmod +x /usr/local/bin/chromedriver
-              echo "Chromedriver instalado en /usr/local/bin/chromedriver"
+          DRIVER_ZIP="chromedriver-linux64.zip"
+          LATEST_JSON="https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone-with-downloads.json"
+          CHROMEDRIVER_URL=""
+          if [ -n "$CHROME_MAJOR" ]; then
+            CHROMEDRIVER_URL=$(curl -sSfL "$LATEST_JSON" | jq -r --arg major "$CHROME_MAJOR" '.milestones[$major].downloads.chromedriver[] | select(.platform == "linux64") | .url // empty') || CHROMEDRIVER_URL=""
+          fi
+
+          if [ -n "$CHROMEDRIVER_URL" ]; then
+            echo "Intentando descargar Chromedriver desde: $CHROMEDRIVER_URL"
+            if curl -sSfL "$CHROMEDRIVER_URL" -o "/tmp/$DRIVER_ZIP"; then
+              unzip -q -o "/tmp/$DRIVER_ZIP" -d "$CHROMEDRIVER_TMP"
+              CHROMEDRIVER_BIN=$(find "$CHROMEDRIVER_TMP" -type f -name chromedriver -print -quit)
+              if [ -n "$CHROMEDRIVER_BIN" ]; then
+                sudo mv -f "$CHROMEDRIVER_BIN" /usr/local/bin/chromedriver
+                sudo chmod +x /usr/local/bin/chromedriver
+                echo "Chromedriver instalado en /usr/local/bin/chromedriver"
+                rm -f "/tmp/$DRIVER_ZIP"
+                rm -rf "$CHROMEDRIVER_TMP"
+              else
+                echo "No se encontro binario chromedriver en el paquete descargado, intentando fallback..."
+              fi
             else
-              echo "El paquete descargado no contiene chromedriver ejecutable, intentando fallback..."
+              echo "Fallo la descarga directa de Chromedriver, intentando fallback..."
             fi
           else
-            echo "Fallo al descargar Chromedriver desde storage principal, usando npm chromedriver (si existe)" || true
+            echo "No se pudo obtener URL de Chromedriver para la version $CHROME_MAJOR, intentando fallback..."
           fi
+
+          echo "Instalando dependencias Node.js para Selenium..."
+          npm install
 
           # Fallback: if chromedriver not yet installed, try node_modules chromedriver
           if [ ! -x "/usr/local/bin/chromedriver" ]; then
@@ -84,9 +99,6 @@ jobs:
               echo "No se encontro chromedriver en node_modules. Selenium puede fallar si no hay driver compatible."
             fi
           fi
-          
-          echo "Instalando dependencias Node.js para Selenium..."
-          npm install
           
           echo "Instalando wkhtmltopdf (fallback de emergencia)..."
           sudo apt-get install -y wkhtmltopdf xvfb curl
