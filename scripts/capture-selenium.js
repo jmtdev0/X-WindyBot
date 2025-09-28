@@ -7,6 +7,7 @@
 
 const { Builder, By, until, Key } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
+const { existsSync } = require('fs');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -32,6 +33,38 @@ class WindyCapture {
         
         const chromeOptions = new chrome.Options();
         
+        // Determinar la ruta correcta de Chromedriver instalada en el runner
+        const candidateDriverPaths = [
+            process.env.CHROMEDRIVER_PATH,
+            '/usr/local/bin/chromedriver',
+            (() => {
+                try {
+                    const chromedriver = require('chromedriver');
+                    if (chromedriver && chromedriver.path) {
+                        return chromedriver.path;
+                    }
+                } catch (err) {
+                    // Ignorar si el paquete no expone la ruta o no existe
+                }
+                return null;
+            })()
+        ].filter(Boolean);
+
+        let driverPathApplied = false;
+        for (const candidate of candidateDriverPaths) {
+            if (existsSync(candidate)) {
+                chrome.setDefaultService(new chrome.ServiceBuilder(candidate).build());
+                process.env.WEBDRIVER_CHROME_DRIVER = candidate;
+                console.log(`🛠️ Chromedriver seleccionado: ${candidate}`);
+                driverPathApplied = true;
+                break;
+            }
+        }
+
+        if (!driverPathApplied) {
+            console.warn('⚠️ No se encontró un Chromedriver específico, Selenium intentará resolverlo automáticamente.');
+        }
+
         // Opciones optimizadas para GitHub Actions
         chromeOptions
             .addArguments('--headless=new')
