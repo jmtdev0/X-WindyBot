@@ -43,18 +43,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          # No usar cache hasta que tengamos package-lock.json estable
           cache: 'npm'
+          cache-dependency-path: 'package.json'
 
       # 3. Instalar dependencias
       - name: 📦 Instalar dependencias
         run: |
-          if [ -f "package-lock.json" ]; then
-            echo "📋 Usando npm ci (package-lock.json encontrado)"
-            npm ci
-          else
-            echo "📦 Usando npm install (generando package-lock.json)"
-            npm install
-          fi
+          echo "� Instalando dependencias con npm install..."
+          npm install
+          echo "✅ Dependencias instaladas correctamente"
 
       # 4. Verificar estructura de directorios
       - name: 📁 Verificar directorios y dependencias
@@ -97,7 +95,20 @@ jobs:
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: false
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
 
-      # 6. Verificar si hay nuevos archivos
+      # 6. Commitear package-lock.json si es nuevo
+      - name: 📝 Commitear package-lock.json (si es nuevo)
+        run: |
+          if [ ! -f "package-lock.json" ] || ! git ls-files --error-unmatch package-lock.json > /dev/null 2>&1; then
+            echo "🆕 package-lock.json es nuevo, será commiteado"
+            git add package-lock.json
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action - Setup"
+            git commit -m "📦 Add package-lock.json for consistent dependency installation" || echo "No hay cambios en package-lock.json"
+          else
+            echo "✅ package-lock.json ya existe y está versionado"
+          fi
+
+      # 7. Verificar si hay nuevos archivos
       - name: 🔍 Verificar cambios
         id: verify-changes
         run: |

@@ -5,6 +5,9 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
+# NO ignorar package-lock.json - necesario para CI
+# package-lock.json
+
 # Archivos de sistema
 .DS_Store
 Thumbs.db

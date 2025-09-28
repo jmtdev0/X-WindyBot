@@ -171,14 +171,27 @@ En la pestaña **Actions** de GitHub puedes:
 
 ## 🛠️ Solución de Problemas
 
+### Error "npm ci can only install packages when your package.json and package-lock.json are in sync"
+
+**Síntomas**: 
+- El workflow falla durante `npm ci` 
+- Menciona dependencias faltantes en el lock file
+- Error: "Missing: [package]@[version] from lock file"
+
+**Solución**: 
+1. **Ya está corregido** - El workflow ahora usa `npm install` siempre
+2. **Generación automática** - Se genera un `package-lock.json` correcto automáticamente  
+3. **Auto-commit** - El workflow commitea el lock file si es nuevo
+4. **Cache optimizado** - Mejor gestión de dependencias en CI
+
 ### Error "Dependencies lock file is not found"
 
 **Síntomas**: El workflow falla con mensaje sobre `package-lock.json` no encontrado.
 
 **Solución**: 
 1. **Ya está corregido** en la versión actual del workflow
-2. El workflow usa automáticamente `npm install` si no existe `package-lock.json`
-3. Se incluye `package-lock.json` en el repositorio para futuras ejecuciones
+2. El workflow usa `npm install` para generar el lock file automáticamente
+3. Se commitea automáticamente para futuras ejecuciones
 
 ### El workflow no se ejecuta automáticamente
 
