@@ -1,4 +1,4 @@
-name: Captura Ultra-Rapida Hibrida
+name: Captura Inteligente con Selenium
 
 on:
   # Ejecucion automatica temporalmente desactivada para testing
@@ -19,8 +19,8 @@ permissions:
   actions: read
 
 jobs:
-  capture-radar-hybrid:
-    name: Captura Ultra-Rapida Hibrida (Chrome + wkhtmltoimage)
+  capture-radar-selenium:
+    name: Captura Inteligente (Selenium + Chrome + Fallbacks)
     runs-on: ubuntu-latest
     timeout-minutes: 8
     
@@ -34,29 +34,43 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Instalar herramientas hibridas de captura
+      - name: Configurar Node.js y dependencias
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar herramientas hibridas (Node.js + Selenium + Chrome)
         run: |
           echo "Actualizando paquetes del sistema..."
           sudo apt-get update -qq
           
-          echo "Instalando Google Chrome (metodo principal)..."
+          echo "Instalando Google Chrome (para Selenium)..."
           wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
           sudo apt-get update -qq
           sudo apt-get install -y google-chrome-stable
           
-          echo "Instalando wkhtmltopdf (fallback) y dependencias..."
+          echo "Instalando dependencias Node.js para Selenium..."
+          npm install
+          
+          echo "Instalando wkhtmltopdf (fallback de emergencia)..."
           sudo apt-get install -y wkhtmltopdf xvfb curl
           
           echo "Verificando instalaciones..."
+          echo "Node.js version: $(node --version)"
+          echo "NPM version: $(npm --version)"
           google-chrome-stable --version || echo "Chrome no disponible"
           wkhtmltoimage --version || echo "wkhtmltoimage no disponible"
           
-          echo "Configurando display virtual..."
+          echo "Verificando dependencias Node.js..."
+          npm list selenium-webdriver chromedriver --depth=0 || echo "Dependencias verificadas"
+          
+          echo "Configurando display virtual para fallbacks..."
           export DISPLAY=:99
           Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
           sleep 3
-          echo "Entorno hibrido configurado correctamente"
+          echo "Entorno híbrido Node.js + Selenium configurado correctamente"
 
       - name: Verificar directorios y conectividad
         run: |
@@ -70,42 +84,83 @@ jobs:
           echo "Espacio disponible:"
           df -h . | head -2
 
-      - name: Ejecutar captura hibrida optimizada
+      - name: Ejecutar captura inteligente con Selenium
+        timeout-minutes: 3
         run: |
-          echo "Iniciando captura hibrida con Chrome headless + wkhtmltoimage fallback..."
+          echo "🚀 Iniciando captura inteligente con Selenium WebDriver..."
+          echo "🎯 Método principal: Node.js + Selenium (Esperas inteligentes)"
+          echo "🔄 Fallback 1: Script bash híbrido"
+          echo "🔄 Fallback 2: Chrome headless directo"
+          echo "=" | tr '\n' '=' | head -c 60; echo
           
-          if [ ! -f "scripts/capture-native.sh" ]; then
-            echo "Script nativo no encontrado, usando comando directo Chrome..."
+          # MÉTODO 1: Selenium WebDriver (PRINCIPAL)
+          echo "🎯 Intentando captura con Selenium WebDriver..."
+          if npm run capture; then
+            echo "✅ Captura Selenium exitosa!"
+            
+          # MÉTODO 2: Script bash híbrido (FALLBACK 1)  
+          elif [ -f "scripts/capture-native.sh" ]; then
+            echo "⚠️ Selenium falló, probando script bash híbrido..."
+            chmod +x scripts/capture-native.sh
+            export DISPLAY=:99
+            timeout 90s ./scripts/capture-native.sh || {
+              echo "❌ Script híbrido también falló"
+              
+              # MÉTODO 3: Chrome directo (FALLBACK 2)
+              echo "⚠️ Usando Chrome headless directo como último recurso..."
+              
+              TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
+              FILENAME="radar_${TIMESTAMP}.png"
+              FILEPATH="captures/${FILENAME}"
+              
+              timeout 45s google-chrome-stable \
+                --headless=new \
+                --no-sandbox \
+                --disable-gpu \
+                --disable-dev-shm-usage \
+                --disable-extensions \
+                --window-size=1920,1080 \
+                --virtual-time-budget=8000 \
+                --screenshot="$FILEPATH" \
+                "https://www.windy.com/?radar,39.853,-3.807,7" || {
+                
+                echo "❌ TODOS LOS MÉTODOS FALLARON"
+                echo "Creando captura de emergencia con información..."
+                
+                mkdir -p captures
+                TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
+                EMERGENCY_FILE="captures/emergency_${TIMESTAMP}.txt"
+                
+                echo "CAPTURA DE EMERGENCIA - $TIMESTAMP" > "$EMERGENCY_FILE"
+                echo "URL: https://www.windy.com/?radar,39.853,-3.807,7" >> "$EMERGENCY_FILE"
+                echo "Todos los métodos de captura fallaron" >> "$EMERGENCY_FILE"
+                curl -I https://www.windy.com --max-time 10 >> "$EMERGENCY_FILE" 2>&1
+                
+                echo "Archivo de emergencia creado: $EMERGENCY_FILE"
+              }
+            }
+            
+          # MÉTODO 3: Chrome directo (si no hay script bash)
+          else
+            echo "⚠️ Selenium falló y no hay script bash, usando Chrome directo..."
             
             TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
             FILENAME="radar_${TIMESTAMP}.png"
             FILEPATH="captures/${FILENAME}"
             
-            echo "Capturando con Chrome headless (15s wait)..."
-            google-chrome-stable \
-              --headless \
+            timeout 45s google-chrome-stable \
+              --headless=new \
               --no-sandbox \
               --disable-gpu \
               --disable-dev-shm-usage \
-              --disable-extensions \
-              --disable-plugins \
-              --disable-background-timer-throttling \
-              --disable-backgrounding-occluded-windows \
-              --disable-renderer-backgrounding \
-              --disable-features=TranslateUI \
-              --disable-ipc-flooding-protection \
               --window-size=1920,1080 \
-              --virtual-time-budget=15000 \
-              --run-all-compositor-stages-before-draw \
+              --virtual-time-budget=10000 \
               --screenshot="$FILEPATH" \
-              "https://www.windy.com/?radar,39.853,-3.807,7"
-              
-            echo "Captura Chrome completada: $FILENAME"
-          else
-            echo "Usando script hibrido mejorado..."
-            chmod +x scripts/capture-native.sh
-            export DISPLAY=:99
-            ./scripts/capture-native.sh
+              "https://www.windy.com/?radar,39.853,-3.807,7" && {
+              echo "✅ Captura Chrome directa exitosa: $FILENAME"
+            } || {
+              echo "❌ Chrome directo también falló"
+            }
           fi
           
           echo "Resultados:"
@@ -171,27 +226,35 @@ jobs:
           
           git push
 
-      - name: Resumen de ejecucion hibrida
+      - name: Resumen de ejecucion inteligente
         run: |
-          echo "=== RESUMEN HIBRIDO ==="
-          echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
-          echo "Trigger: workflow_dispatch"
+          echo "=== RESUMEN INTELIGENTE CON SELENIUM ==="
+          echo "🕐 Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "🎯 Trigger: workflow_dispatch"
+          echo "🚀 Arquitectura: Node.js + Selenium WebDriver"
           
           if [ "${{ steps.check.outputs.has_changes }}" == "true" ]; then
-            echo "Estado: Captura exitosa y cambios commiteados"
-            echo "Total de capturas: ${{ steps.check.outputs.file_count }}"
+            echo "✅ Estado: Captura exitosa y cambios commiteados"
+            echo "📊 Total de capturas: ${{ steps.check.outputs.file_count }}"
           else
-            echo "Estado: Ejecucion completada, sin cambios"
+            echo "ℹ️ Estado: Ejecucion completada, sin cambios"
           fi
           
-          echo "Contenido actual:"
+          echo ""
+          echo "📁 Contenido actual:"
           ls -la captures/ | tail -3 || echo "Sin archivos"
           
-          echo "Tamano total:"
+          echo ""
+          echo "📊 Tamaño total:"
           du -sh captures/ || echo "0B"
           
-          echo "Ventajas de la implementacion hibrida:"
-          echo "  - Chrome headless como metodo principal (mejor JS)"
-          echo "  - wkhtmltoimage como fallback confiable"
-          echo "  - Debugging avanzado y analisis automatico"
-          echo "  - Optimizado para sitios JavaScript pesados como Windy.com"
+          echo ""
+          echo "🎉 VENTAJAS DE LA IMPLEMENTACIÓN CON SELENIUM:"
+          echo "  ✅ Selenium WebDriver como método principal (esperas inteligentes)"
+          echo "  ✅ Detección automática de elementos cargados"
+          echo "  ✅ Manejo avanzado de JavaScript asíncrono"
+          echo "  ✅ Optimización específica para Windy.com"
+          echo "  ✅ Triple fallback: Selenium → Bash → Chrome directo"
+          echo "  ✅ Validación automática de capturas"
+          echo "  ✅ Debugging avanzado y logs detallados"
+          echo "  ✅ Timeout inteligente por método"

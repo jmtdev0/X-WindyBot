@@ -5,7 +5,11 @@
   "main": "scripts/screenshot.js",
   "scripts": {
     "screenshot": "node scripts/screenshot.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "capture": "node scripts/capture-selenium.js",
+    "capture-hybrid": "node scripts/capture-selenium.js || bash scripts/capture-native.sh",
+    "test-selenium": "node scripts/test-selenium.js",
+    "setup-webdriver": "node -e \"require('chromedriver'); console.log('ChromeDriver configurado')\"",
+    "test": "npm run test-selenium"
   },
   "repository": {
     "type": "git",
@@ -15,6 +19,8 @@
     "weather",
     "radar",
     "automation",
+    "selenium",
+    "webdriver",
     "wkhtmltopdf",
     "windy",
     "screenshots"
@@ -22,7 +28,9 @@
   "author": "jmtdev0",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "selenium-webdriver": "^4.15.0",
+    "chromedriver": "^119.0.1"
   },
   "devDependencies": {},
   "engines": {
