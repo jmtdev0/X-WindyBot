@@ -9,7 +9,7 @@ const path = require('path');
 
 const CONFIG = {
   // URL específica del radar de Windy (puedes personalizar esta URL)
-  WINDY_URL: 'https://www.windy.com/?rain,2023-10-01-12,40.416,-3.703,8',
+  WINDY_URL: 'https://www.windy.com/-Weather-radar-radar?radar,39.853,-3.807,7',
   
   // Configuraciones de captura
   VIEWPORT: {
