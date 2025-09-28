@@ -160,7 +160,7 @@ async function captureRadarScreenshot() {
 }
 
 /**
- * Función para limpiar capturas antiguas (opcional)
+ * Función para limpiar capturas antiguas (automática)
  * Mantiene solo los últimos N archivos para evitar que el repo crezca demasiado
  */
 async function cleanOldCaptures(keepLast = 100) {
@@ -198,8 +198,8 @@ if (require.main === module) {
     if (result.success) {
       console.log('🎉 ¡Captura completada exitosamente!');
       
-      // Opcional: limpiar archivos antiguos
-      // await cleanOldCaptures(50);
+      // Limpiar archivos antiguos automáticamente (mantener últimas 100 capturas)
+      await cleanOldCaptures(100);
       
       process.exit(0);
     } else {

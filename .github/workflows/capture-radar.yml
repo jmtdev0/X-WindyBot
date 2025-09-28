@@ -10,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       cleanup_old_files:
-        description: 'Limpiar archivos antiguos (mantener últimos 50)'
+        description: 'Limpiar archivos antiguos (mantener últimos 100)'
         required: false
-        default: 'false'
+        default: 'true'
         type: boolean
 
 # Configuración de permisos
@@ -100,11 +100,28 @@ jobs:
           git config --local user.name "GitHub Action - Radar Capture"
           git config --local core.autocrlf false
 
-      # 8. Commit y push (solo si hay cambios)
+      # 8. Limpieza automática después de captura exitosa
+      - name: 🧹 Limpieza automática de capturas antiguas
+        if: steps.verify-changes.outputs.has_changes == 'true'
+        run: |
+          cd captures
+          FILE_COUNT=$(find . -name "radar_*.png" | wc -l)
+          echo "📊 Archivos actuales antes de limpieza: $FILE_COUNT"
+          
+          if [ "$FILE_COUNT" -gt 100 ]; then
+            echo "🧹 Eliminando archivos antiguos (manteniendo últimos 100)..."
+            find . -name "radar_*.png" -printf '%T@ %p\n' | sort -n | head -n -100 | cut -d' ' -f2- | xargs rm -f
+            NEW_COUNT=$(find . -name "radar_*.png" | wc -l)
+            echo "✅ Limpieza automática completada. Archivos restantes: $NEW_COUNT"
+          else
+            echo "ℹ️  No es necesario limpiar (solo $FILE_COUNT archivos)"
+          fi
+
+      # 9. Commit y push (solo si hay cambios)
       - name: 💾 Commit y push cambios
         if: steps.verify-changes.outputs.has_changes == 'true'
         run: |
-          # Añadir solo archivos de capturas
+          # Añadir todos los cambios en captures (nuevos archivos y eliminaciones)
           git add captures/
           
           # Crear commit con timestamp
@@ -112,31 +129,30 @@ jobs:
           COMMIT_MSG="📸 Captura automática del radar - $TIMESTAMP"
           
           # Añadir información adicional al commit
-          if [ -n "${{ steps.verify-changes.outputs.file_count }}" ]; then
-            COMMIT_MSG="$COMMIT_MSG (Total: ${{ steps.verify-changes.outputs.file_count }} capturas)"
-          fi
+          FINAL_COUNT=$(find captures -name "radar_*.png" | wc -l)
+          COMMIT_MSG="$COMMIT_MSG (Total: $FINAL_COUNT capturas)"
           
           git commit -m "$COMMIT_MSG"
           
           echo "🚀 Haciendo push de los cambios..."
           git push
 
-      # 9. Limpiar archivos antiguos (opcional, solo en ejecución manual)
-      - name: 🧹 Limpiar archivos antiguos
-        if: github.event.inputs.cleanup_old_files == 'true'
+      # 10. Limpiar archivos antiguos (manual adicional si se solicita)
+      - name: 🧹 Limpieza manual adicional
+        if: github.event.inputs.cleanup_old_files == 'true' && github.event_name == 'workflow_dispatch'
         run: |
           echo "🧹 Iniciando limpieza de archivos antiguos..."
           
-          # Mantener solo los últimos 50 archivos
+          # Mantener solo los últimos 100 archivos
           cd captures
           FILE_COUNT=$(find . -name "radar_*.png" | wc -l)
           
-          if [ "$FILE_COUNT" -gt 50 ]; then
+          if [ "$FILE_COUNT" -gt 100 ]; then
             echo "Archivos encontrados: $FILE_COUNT"
-            echo "Eliminando archivos antiguos (manteniendo últimos 50)..."
+            echo "Eliminando archivos antiguos (manteniendo últimos 100)..."
             
             # Listar archivos por fecha y eliminar los más antiguos
-            find . -name "radar_*.png" -printf '%T@ %p\n' | sort -n | head -n -50 | cut -d' ' -f2- | xargs rm -f
+            find . -name "radar_*.png" -printf '%T@ %p\n' | sort -n | head -n -100 | cut -d' ' -f2- | xargs rm -f
             
             NEW_COUNT=$(find . -name "radar_*.png" | wc -l)
             echo "✅ Limpieza completada. Archivos restantes: $NEW_COUNT"
@@ -145,14 +161,14 @@ jobs:
             cd ..
             if ! git diff --quiet captures/; then
               git add captures/
-              git commit -m "🧹 Limpieza automática - Mantenidos últimos 50 archivos"
+              git commit -m "🧹 Limpieza automática - Mantenidos últimos 100 archivos"
               git push
             fi
           else
             echo "No es necesario limpiar (solo $FILE_COUNT archivos)"
           fi
 
-      # 10. Resumen de ejecución
+      # 11. Resumen de ejecución
       - name: 📋 Resumen de ejecución
         if: always()
         run: |

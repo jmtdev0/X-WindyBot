@@ -97,7 +97,7 @@ Para ejecutar manualmente una captura:
 
 1. Ve a **Actions** → **"📸 Captura Radar Meteorológico"**
 2. Haz clic en **"Run workflow"**
-3. Opcionalmente marca **"Limpiar archivos antiguos"** para mantener solo los últimos 50 screenshots
+3. Opcionalmente marca **"Limpiar archivos antiguos"** para una limpieza manual adicional (la limpieza automática ya mantiene 100 capturas)
 
 ### Ver Capturas
 
@@ -138,12 +138,14 @@ const CONFIG = {
 
 ### Gestión de Archivos Antiguos
 
-El sistema incluye funciones para limpiar capturas antiguas:
+El sistema incluye limpieza automática de capturas antiguas:
 
 ```javascript
-// Mantener solo los últimos 50 archivos
-await cleanOldCaptures(50);
+// Mantener solo los últimos 100 archivos (configuración por defecto)
+await cleanOldCaptures(100);
 ```
+
+**ℹ️ Configuración actual**: El bot mantiene automáticamente solo las **últimas 100 capturas** después de cada ejecución exitosa.
 
 ## 📊 Monitoreo y Logs
 
@@ -183,17 +185,18 @@ En la pestaña **Actions** de GitHub puedes:
 
 ### El repositorio crece mucho
 
-1. **Activa la limpieza automática** modificando el workflow
-2. **Ejecuta limpieza manual** con la opción en "Run workflow"
-3. **Reduce la frecuencia** de capturas
+1. **La limpieza automática ya está activada** (mantiene 100 capturas)
+2. **Ejecuta limpieza manual adicional** con la opción en "Run workflow"
+3. **Reduce el número máximo** editando el valor en `scripts/screenshot.js`
+4. **Reduce la frecuencia** de capturas modificando el cron schedule
 
 ### Falta de espacio en GitHub
 
-GitHub ofrece 1GB gratis. Con capturas de ~250KB cada 5 minutos:
-- **Por día**: ~288 capturas × 250KB = ~72MB
-- **Por mes**: ~2.2GB (excedería el límite)
+GitHub ofrece 1GB gratis. Con capturas de ~250KB y máximo 100 archivos:
+- **Máximo espacio usado**: 100 capturas × 250KB = ~25MB
+- **Tiempo cubierto**: ~8.3 horas de historial continuo
 
-**Solución**: Activa la limpieza automática para mantener solo capturas recientes.
+**✅ Solución implementada**: La limpieza automática mantiene siempre solo las últimas 100 capturas.
 
 ## 🤝 Contribuciones
 
@@ -204,6 +207,7 @@ GitHub ofrece 1GB gratis. Con capturas de ~250KB cada 5 minutos:
 - 📱 Notificaciones cuando se detecten condiciones meteorológicas específicas
 - 📈 Generación de GIFs animados con secuencias de capturas
 - 🔍 Análisis automático de patrones meteorológicos
+- 📅 Configuración de retención de capturas por días/horas en lugar de cantidad fija
 
 ## 📄 Licencia
 
