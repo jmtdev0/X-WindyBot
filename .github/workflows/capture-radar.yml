@@ -1,0 +1,174 @@
+name: 📸 Captura Radar Meteorológico
+
+# Configuración de triggers
+on:
+  # Ejecución automática cada 5 minutos
+  schedule:
+    - cron: '*/5 * * * *'
+  
+  # Permite ejecución manual desde la interfaz de GitHub
+  workflow_dispatch:
+    inputs:
+      cleanup_old_files:
+        description: 'Limpiar archivos antiguos (mantener últimos 50)'
+        required: false
+        default: 'false'
+        type: boolean
+
+# Configuración de permisos
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  capture-radar:
+    name: 🌦️ Capturar Radar de Windy.com
+    runs-on: ubuntu-latest
+    
+    # Timeout para evitar ejecuciones colgadas
+    timeout-minutes: 10
+    
+    steps:
+      # 1. Checkout del repositorio
+      - name: 📥 Checkout repositorio
+        uses: actions/checkout@v4
+        with:
+          # Traer todo el historial para commits
+          fetch-depth: 0
+          # Token para poder hacer push
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Configurar Node.js
+      - name: 🟢 Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 3. Instalar dependencias
+      - name: 📦 Instalar dependencias
+        run: npm ci
+
+      # 4. Verificar estructura de directorios
+      - name: 📁 Verificar directorios
+        run: |
+          mkdir -p captures
+          ls -la captures/ || true
+          echo "Estructura del proyecto:"
+          find . -type f -name "*.js" -o -name "*.json" | head -10
+
+      # 5. Ejecutar script de captura
+      - name: 📸 Ejecutar captura de radar
+        run: |
+          echo "🚀 Iniciando captura del radar meteorológico..."
+          npm run screenshot
+        env:
+          # Variables de entorno para Puppeteer en CI
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: false
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
+
+      # 6. Verificar si hay nuevos archivos
+      - name: 🔍 Verificar cambios
+        id: verify-changes
+        run: |
+          # Verificar si hay archivos nuevos o modificados
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No hay cambios para commitear"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Se detectaron cambios"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            
+            # Mostrar estadísticas
+            echo "📊 Archivos modificados:"
+            git status --porcelain
+            
+            echo "📈 Estadísticas de la carpeta captures:"
+            ls -la captures/ | tail -5
+            
+            # Contar archivos en captures
+            FILE_COUNT=$(find captures -name "*.png" | wc -l)
+            echo "Total de capturas: $FILE_COUNT"
+            echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
+          fi
+
+      # 7. Configurar Git (solo si hay cambios)
+      - name: ⚙️ Configurar Git
+        if: steps.verify-changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action - Radar Capture"
+          git config --local core.autocrlf false
+
+      # 8. Commit y push (solo si hay cambios)
+      - name: 💾 Commit y push cambios
+        if: steps.verify-changes.outputs.has_changes == 'true'
+        run: |
+          # Añadir solo archivos de capturas
+          git add captures/
+          
+          # Crear commit con timestamp
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          COMMIT_MSG="📸 Captura automática del radar - $TIMESTAMP"
+          
+          # Añadir información adicional al commit
+          if [ -n "${{ steps.verify-changes.outputs.file_count }}" ]; then
+            COMMIT_MSG="$COMMIT_MSG (Total: ${{ steps.verify-changes.outputs.file_count }} capturas)"
+          fi
+          
+          git commit -m "$COMMIT_MSG"
+          
+          echo "🚀 Haciendo push de los cambios..."
+          git push
+
+      # 9. Limpiar archivos antiguos (opcional, solo en ejecución manual)
+      - name: 🧹 Limpiar archivos antiguos
+        if: github.event.inputs.cleanup_old_files == 'true'
+        run: |
+          echo "🧹 Iniciando limpieza de archivos antiguos..."
+          
+          # Mantener solo los últimos 50 archivos
+          cd captures
+          FILE_COUNT=$(find . -name "radar_*.png" | wc -l)
+          
+          if [ "$FILE_COUNT" -gt 50 ]; then
+            echo "Archivos encontrados: $FILE_COUNT"
+            echo "Eliminando archivos antiguos (manteniendo últimos 50)..."
+            
+            # Listar archivos por fecha y eliminar los más antiguos
+            find . -name "radar_*.png" -printf '%T@ %p\n' | sort -n | head -n -50 | cut -d' ' -f2- | xargs rm -f
+            
+            NEW_COUNT=$(find . -name "radar_*.png" | wc -l)
+            echo "✅ Limpieza completada. Archivos restantes: $NEW_COUNT"
+            
+            # Commit de la limpieza
+            cd ..
+            if ! git diff --quiet captures/; then
+              git add captures/
+              git commit -m "🧹 Limpieza automática - Mantenidos últimos 50 archivos"
+              git push
+            fi
+          else
+            echo "No es necesario limpiar (solo $FILE_COUNT archivos)"
+          fi
+
+      # 10. Resumen de ejecución
+      - name: 📋 Resumen de ejecución
+        if: always()
+        run: |
+          echo "=== 📋 RESUMEN DE EJECUCIÓN ==="
+          echo "⏰ Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "🔄 Trigger: ${{ github.event_name }}"
+          
+          if [ "${{ steps.verify-changes.outputs.has_changes }}" == "true" ]; then
+            echo "✅ Estado: Captura exitosa y cambios commiteados"
+            echo "📊 Total de capturas: ${{ steps.verify-changes.outputs.file_count }}"
+          else
+            echo "ℹ️  Estado: Ejecución completada, sin cambios"
+          fi
+          
+          echo "📁 Contenido actual de captures/:"
+          ls -la captures/ | tail -5 || echo "No hay archivos en captures/"
+          
+          echo "💾 Tamaño total de la carpeta captures:"
+          du -sh captures/ || echo "0B"

@@ -1,0 +1,31 @@
+{
+  "name": "x-windybot",
+  "version": "1.0.0",
+  "description": "Herramienta de automatización para capturar screenshots del radar meteorológico de Windy.com",
+  "main": "scripts/screenshot.js",
+  "scripts": {
+    "screenshot": "node scripts/screenshot.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jmtdev0/X-WindyBot.git"
+  },
+  "keywords": [
+    "weather",
+    "radar",
+    "automation",
+    "puppeteer",
+    "windy",
+    "screenshots"
+  ],
+  "author": "jmtdev0",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^21.3.6"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

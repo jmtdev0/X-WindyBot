@@ -1,0 +1,44 @@
+# Dependencias de Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Coverage directory usado por herramientas como istanbul
+coverage/
+*.lcov
+
+# Nyc test coverage
+.nyc_output
+
+# Archivos de configuración local
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archivos temporales
+temp/
+tmp/
+
+# No ignorar la carpeta captures (queremos versionar los screenshots)
+# captures/ 
+
+# Archivos de prueba locales
+test-screenshot.png
