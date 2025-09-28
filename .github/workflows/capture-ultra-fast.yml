@@ -1,221 +1,197 @@
-name: 🚀 Captura Ultra-Rápida (Nativo)      # 1. Instalar herramientas nativas optimizadas
-      - name: 📦 Instalar herramientas híbridas de captura
-        run: |
-          echo "📦 Actualizando paquetes del sistema..."
-          sudo apt-get update -qq
-          
-          echo "🔧 Instalando Google Chrome (método principal)..."
-          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
-          sudo apt-get update -qq
-          sudo apt-get install -y google-chrome-stable
-          
-          echo "🔧 Instalando wkhtmltopdf (fallback) y dependencias..."
-          sudo apt-get install -y wkhtmltopdf xvfb curl
-          
-          echo "✅ Verificando instalaciones..."
-          google-chrome-stable --version || echo "Chrome no disponible"
-          wkhtmltoimage --version || echo "wkhtmltoimage no disponible"
-          
-          echo "🖥️ Configurando display virtual..."
-          export DISPLAY=:99
-          Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-          sleep 3
-          echo "✅ Entorno híbrido configurado correctamente"ón de triggers
+name: Captura Ultra-Rapida Hibrida
+
 on:
-  # 🚫 Ejecución automática temporalmente desactivada para testing
+  # Ejecucion automatica temporalmente desactivada para testing
   # schedule:
   #   - cron: '*/5 * * * *'
   
-  # Permite ejecución manual desde la interfaz de GitHub
+  # Permite ejecucion manual desde la interfaz de GitHub
   workflow_dispatch:
     inputs:
       cleanup_old_files:
-        description: 'Limpiar archivos antiguos (mantener últimos 100)'
+        description: 'Limpiar archivos antiguos (mantener ultimos 100)'
         required: false
         default: 'true'
         type: boolean
 
-# Configuración de permisos
 permissions:
   contents: write
   actions: read
 
 jobs:
-  capture-radar-native:
-    name: ⚡ Captura Ultra-Rápida con Herramientas Nativas
+  capture-radar-hybrid:
+    name: Captura Ultra-Rapida Hibrida (Chrome + wkhtmltoimage)
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     
-    # Timeout reducido porque es más rápido
-    timeout-minutes: 5
-    
+    outputs:
+      file_count: ${{ steps.check.outputs.file_count }}
+      has_changes: ${{ steps.check.outputs.has_changes }}
+
     steps:
-      # 1. Checkout del repositorio
-      - name: 📥 Checkout repositorio
+      - name: Checkout repositorio
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. Instalar herramientas mínimas
-      - name: 📦 Instalar herramientas nativas
+      - name: Instalar herramientas hibridas de captura
         run: |
-          echo "📦 Actualizando paquetes del sistema..."
+          echo "Actualizando paquetes del sistema..."
           sudo apt-get update -qq
           
-          echo "🔧 Instalando wkhtmltopdf y dependencias..."
+          echo "Instalando Google Chrome (metodo principal)..."
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+          sudo apt-get update -qq
+          sudo apt-get install -y google-chrome-stable
+          
+          echo "Instalando wkhtmltopdf (fallback) y dependencias..."
           sudo apt-get install -y wkhtmltopdf xvfb curl
           
-          echo "✅ Verificando instalación..."
-          wkhtmltoimage --version
+          echo "Verificando instalaciones..."
+          google-chrome-stable --version || echo "Chrome no disponible"
+          wkhtmltoimage --version || echo "wkhtmltoimage no disponible"
           
-          echo "🖥️ Configurando display virtual..."
+          echo "Configurando display virtual..."
           export DISPLAY=:99
           Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-          sleep 2
-          echo "✅ Entorno configurado correctamente"
+          sleep 3
+          echo "Entorno hibrido configurado correctamente"
 
-      # 3. Verificar estructura
-      - name: 📁 Verificar directorios
+      - name: Verificar directorios y conectividad
         run: |
-          echo "🔍 Verificando estructura del proyecto..."
+          echo "Verificando estructura del proyecto..."
           mkdir -p captures
-          ls -la captures/ || echo "Carpeta captures vacía"
+          ls -la captures/ || echo "Carpeta captures vacia"
           
-          echo "🌐 Verificando conectividad..."
-          curl -I https://www.windy.com --max-time 10 || echo "⚠️ Problema de conectividad"
+          echo "Verificando conectividad..."
+          curl -I https://www.windy.com --max-time 10 || echo "Problema de conectividad"
           
-          echo "💾 Espacio disponible:"
+          echo "Espacio disponible:"
           df -h . | head -2
 
-      # 4. Ejecutar captura ultra-rápida
-      - name: ⚡ Ejecutar captura ultra-rápida
+      - name: Ejecutar captura hibrida optimizada
         run: |
-          echo "🚀 Iniciando captura ultra-rápida..."
+          echo "Iniciando captura hibrida con Chrome headless + wkhtmltoimage fallback..."
           
-          # Verificar script
           if [ ! -f "scripts/capture-native.sh" ]; then
-            echo "❌ Script nativo no encontrado, usando comando directo..."
+            echo "Script nativo no encontrado, usando comando directo Chrome..."
             
-            # Captura directa con wkhtmltoimage
             TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
             FILENAME="radar_${TIMESTAMP}.png"
             FILEPATH="captures/${FILENAME}"
             
-            export DISPLAY=:99
-            wkhtmltoimage \
-              --width 1920 \
-              --height 1080 \
-              --format png \
-              --quality 90 \
-              --javascript-delay 8000 \
-              --no-stop-slow-scripts \
-              --enable-javascript \
-              --load-error-handling ignore \
-              --load-media-error-handling ignore \
-              "https://www.windy.com/-Weather-radar-radar?radar,39.853,-3.807,7" \
-              "$FILEPATH"
+            echo "Capturando con Chrome headless (15s wait)..."
+            google-chrome-stable \
+              --headless \
+              --no-sandbox \
+              --disable-gpu \
+              --disable-dev-shm-usage \
+              --disable-extensions \
+              --disable-plugins \
+              --disable-background-timer-throttling \
+              --disable-backgrounding-occluded-windows \
+              --disable-renderer-backgrounding \
+              --disable-features=TranslateUI \
+              --disable-ipc-flooding-protection \
+              --window-size=1920,1080 \
+              --virtual-time-budget=15000 \
+              --run-all-compositor-stages-before-draw \
+              --screenshot="$FILEPATH" \
+              "https://www.windy.com/?radar,39.853,-3.807,7"
               
-            echo "✅ Captura completada: $FILENAME"
+            echo "Captura Chrome completada: $FILENAME"
           else
-            echo "✅ Usando script nativo..."
+            echo "Usando script hibrido mejorado..."
             chmod +x scripts/capture-native.sh
             export DISPLAY=:99
             ./scripts/capture-native.sh
           fi
           
-          echo "📊 Resultados:"
+          echo "Resultados:"
           ls -la captures/*.png 2>/dev/null || echo "No hay capturas PNG"
           
-          echo ""
-          echo "🔍 Análisis de logs de debugging:"
+          echo "Analisis de logs de debugging:"
           if [ -f "chrome_debug.log" ]; then
-            echo "📄 Chrome debug log (últimas 10 líneas):"
+            echo "Chrome debug log (ultimas 10 lineas):"
             tail -10 chrome_debug.log
           fi
           
           if [ -f "wkhtmltoimage_debug.log" ]; then
-            echo "📄 wkhtmltoimage debug log (últimas 10 líneas):"
+            echo "wkhtmltoimage debug log (ultimas 10 lineas):"
             tail -10 wkhtmltoimage_debug.log
           fi
 
-      # 5. Verificar cambios
-      - name: 🔍 Verificar cambios
-        id: verify-changes
+      - name: Verificar estado del repositorio
+        id: check
         run: |
-          echo "🔍 Verificando estado del repositorio..."
+          echo "Verificando estado del repositorio..."
           
-          # Contar archivos
           FILE_COUNT=$(find captures -name "*.png" 2>/dev/null | wc -l)
           echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
-          echo "📊 Total de capturas: $FILE_COUNT"
+          echo "Total de capturas: $FILE_COUNT"
           
-          # Verificar cambios
           if git diff --quiet && git diff --staged --quiet; then
-            echo "ℹ️ No hay cambios para commitear"
+            echo "No hay cambios para commitear"
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
-            echo "✅ Se detectaron cambios"
+            echo "Se detectaron cambios"
             echo "has_changes=true" >> $GITHUB_OUTPUT
             
-            echo "📋 Estado de Git:"
+            echo "Estado de Git:"
             git status --porcelain
           fi
 
-      # 6. Limpieza automática
-      - name: 🧹 Limpieza automática
-        if: steps.verify-changes.outputs.has_changes == 'true'
+      - name: Limpieza automatica de archivos antiguos
+        if: steps.check.outputs.has_changes == 'true'
         run: |
           cd captures
           FILE_COUNT=$(find . -name "radar_*.png" | wc -l)
           
           if [ "$FILE_COUNT" -gt 100 ]; then
-            echo "🧹 Eliminando archivos antiguos (manteniendo últimos 100)..."
+            echo "Eliminando archivos antiguos (manteniendo ultimos 100)..."
             find . -name "radar_*.png" -printf '%T@ %p\n' | sort -n | head -n -100 | cut -d' ' -f2- | xargs rm -f
             NEW_COUNT=$(find . -name "radar_*.png" | wc -l)
-            echo "✅ Limpieza completada. Archivos restantes: $NEW_COUNT"
+            echo "Limpieza completada. Archivos restantes: $NEW_COUNT"
           else
-            echo "ℹ️ No necesita limpieza (solo $FILE_COUNT archivos)"
+            echo "No necesita limpieza (solo $FILE_COUNT archivos)"
           fi
 
-      # 7. Configurar Git y commit
-      - name: 💾 Commit y push cambios
-        if: steps.verify-changes.outputs.has_changes == 'true'
+      - name: Configurar Git y hacer commit
+        if: steps.check.outputs.has_changes == 'true'
         run: |
           git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action - Ultra Fast Radar"
+          git config --local user.name "GitHub Action - Ultra Fast Hybrid"
           
           git add captures/
           
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           FINAL_COUNT=$(find captures -name "radar_*.png" | wc -l)
-          git commit -m "⚡ Captura ultra-rápida del radar - $TIMESTAMP (Total: $FINAL_COUNT capturas)"
+          git commit -m "Captura hibrida del radar - $TIMESTAMP (Total: $FINAL_COUNT capturas)"
           
           git push
 
-      # 8. Resumen final
-      - name: 📋 Resumen de ejecución
-        if: always()
+      - name: Resumen de ejecucion hibrida
         run: |
-          echo "=== ⚡ RESUMEN ULTRA-RÁPIDO ==="
-          echo "⏰ Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
-          echo "🔄 Trigger: ${{ github.event_name }}"
+          echo "=== RESUMEN HIBRIDO ==="
+          echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "Trigger: workflow_dispatch"
           
-          if [ "${{ steps.verify-changes.outputs.has_changes }}" == "true" ]; then
-            echo "✅ Estado: Captura exitosa y cambios commiteados"
-            echo "📊 Total de capturas: ${{ steps.verify-changes.outputs.file_count }}"
+          if [ "${{ steps.check.outputs.has_changes }}" == "true" ]; then
+            echo "Estado: Captura exitosa y cambios commiteados"
+            echo "Total de capturas: ${{ steps.check.outputs.file_count }}"
           else
-            echo "ℹ️ Estado: Ejecución completada, sin cambios"
+            echo "Estado: Ejecucion completada, sin cambios"
           fi
           
-          echo "📁 Contenido actual:"
+          echo "Contenido actual:"
           ls -la captures/ | tail -3 || echo "Sin archivos"
           
-          echo "💾 Tamaño total:"
+          echo "Tamano total:"
           du -sh captures/ || echo "0B"
           
-          echo "⚡ Ventajas de esta implementación:"
-          echo "  - Sin dependencias de Node.js"
-          echo "  - Sin descarga de Chromium (150MB+)"
-          echo "  - Instalación en ~30 segundos vs 5+ minutos"
-          echo "  - Uso de herramientas nativas del sistema"
+          echo "Ventajas de la implementacion hibrida:"
+          echo "  - Chrome headless como metodo principal (mejor JS)"
+          echo "  - wkhtmltoimage como fallback confiable"
+          echo "  - Debugging avanzado y analisis automatico"
+          echo "  - Optimizado para sitios JavaScript pesados como Windy.com"
