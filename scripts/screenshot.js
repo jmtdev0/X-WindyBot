@@ -34,13 +34,9 @@ const CONFIG = {
     '--quality', '90',
     '--javascript-delay', '8000',  // Más tiempo para JS
     '--no-stop-slow-scripts',
-    '--debug-javascript',
     '--enable-javascript',
     '--load-error-handling', 'ignore',
-    '--load-media-error-handling', 'ignore',
-    '--enable-local-file-access',
-    '--disable-smart-shrinking',
-    '--user-style-sheet', '/dev/null'  // Evitar conflictos de CSS
+    '--load-media-error-handling', 'ignore'
   ]
 };
 
@@ -85,16 +81,10 @@ async function captureRadarScreenshot() {
     const fileName = generateFileName();
     const filePath = path.join(CONFIG.CAPTURES_DIR, fileName);
     
-    // User-Agent realista para evitar bloqueos
-    const userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-    
-    // Construir comando wkhtmltoimage con configuración completa
+    // Construir comando wkhtmltoimage con configuración simplificada
     const wkhtmlCommand = [
       'wkhtmltoimage',
       ...CONFIG.WKHTML_OPTIONS,
-      '--custom-header', 'Accept-Language', 'en-US,en;q=0.9',
-      '--user-agent', `"${userAgent}"`,
-      '--cookie-jar', '/tmp/cookies.txt',
       `"${CONFIG.WINDY_URL}"`,
       `"${filePath}"`
     ].join(' ');

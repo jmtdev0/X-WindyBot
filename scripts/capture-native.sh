@@ -31,14 +31,9 @@ if command -v wkhtmltoimage &> /dev/null; then
         --quality 90 \
         --javascript-delay 8000 \
         --no-stop-slow-scripts \
-        --debug-javascript \
         --enable-javascript \
         --load-error-handling ignore \
         --load-media-error-handling ignore \
-        --enable-local-file-access \
-        --disable-smart-shrinking \
-        --custom-header Accept-Language "en-US,en;q=0.9" \
-        --user-agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
         "$WINDY_URL" \
         "$FILEPATH"
         
@@ -88,14 +83,9 @@ else
         --quality 90 \
         --javascript-delay 8000 \
         --no-stop-slow-scripts \
-        --debug-javascript \
         --enable-javascript \
         --load-error-handling ignore \
         --load-media-error-handling ignore \
-        --enable-local-file-access \
-        --disable-smart-shrinking \
-        --custom-header Accept-Language "en-US,en;q=0.9" \
-        --user-agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
         "$WINDY_URL" \
         "$FILEPATH"
 fi

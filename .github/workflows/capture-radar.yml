@@ -31,9 +31,9 @@ name: 📸 Captura Radar Meteorológico
           
           echo "🌍 Verificando conectividad:"
           curl -I https://www.windy.com || echo "Problema de conectividad"
-  # Ejecución automática cada 5 minutos
-  schedule:
-    - cron: '*/5 * * * *'
+  # 🚫 Ejecución automática temporalmente desactivada para testing
+  # schedule:
+  #   - cron: '*/5 * * * *'
   
   # Permite ejecución manual desde la interfaz de GitHub
   workflow_dispatch:

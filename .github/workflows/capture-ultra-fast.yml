@@ -2,9 +2,9 @@ name: 🚀 Captura Ultra-Rápida (Nativo)
 
 # Configuración de triggers
 on:
-  # Ejecución automática cada 5 minutos
-  schedule:
-    - cron: '*/5 * * * *'
+  # 🚫 Ejecución automática temporalmente desactivada para testing
+  # schedule:
+  #   - cron: '*/5 * * * *'
   
   # Permite ejecución manual desde la interfaz de GitHub
   workflow_dispatch:
@@ -89,14 +89,9 @@ jobs:
               --quality 90 \
               --javascript-delay 8000 \
               --no-stop-slow-scripts \
-              --debug-javascript \
               --enable-javascript \
               --load-error-handling ignore \
               --load-media-error-handling ignore \
-              --enable-local-file-access \
-              --disable-smart-shrinking \
-              --custom-header Accept-Language "en-US,en;q=0.9" \
-              --user-agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
               "https://www.windy.com/-Weather-radar-radar?radar,39.853,-3.807,7" \
               "$FILEPATH"
               
