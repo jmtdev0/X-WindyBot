@@ -182,19 +182,31 @@ En la pestaña **Actions** de GitHub puedes:
 
 ## 🛠️ Solución de Problemas
 
+### Capturas aparecen en gris o vacías
+
+**Síntomas**:
+- Las capturas se generan pero muestran pantalla gris
+- El fondo de Windy.com se ve pero no hay datos del radar
+- Archivos PNG válidos pero sin contenido meteorológico
+
+**Causa**: Windy.com usa JavaScript pesado y WebGL que requiere más tiempo de carga
+
+**Solución**:
+1. **✅ Ya está corregido** - Tiempo de JS aumentado de 3s a 8s
+2. **🔧 Configuración optimizada** - User-Agent realista y headers mejorados
+3. **🎯 Script híbrido** - Usa Chrome headless como fallback (`capture-hybrid.sh`)
+4. **⏱️ Más tiempo de renderizado** - Permite carga completa del mapa
+
 ### Error de timeouts o instalación lenta de dependencias
 
 **Síntomas**: 
 - El workflow tarda más de 5 minutos en npm install
 - Timeouts durante la captura con Puppeteer  
 - Error: "The operation was canceled"
-- Instalación de Chromium (~150MB) muy lenta
 
 **Solución**: 
 1. **🚀 Usa el workflow ultra-rápido** (`capture-ultra-fast.yml`)
-2. **⚡ Sin Node.js pesado** - Solo herramientas nativas del sistema
-3. **🛠️ Sin Chromium** - Usa wkhtmltopdf (mucho más ligero)
-4. **⏱️ Tiempo total** ~1 minuto vs ~8+ minutos
+2. **⚡ Tiempo total** ~2 minutos con configuración optimizada
 
 ### Error "npm ci can only install packages when your package.json and package-lock.json are in sync" 
 

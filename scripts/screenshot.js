@@ -20,21 +20,27 @@ const CONFIG = {
     height: 1080
   },
   
-  // Tiempo de espera para que cargue completamente la página (más rápido)
-  WAIT_TIME: 3000,
+  // Tiempo de espera para que cargue completamente la página (aumentado para Windy)
+  WAIT_TIME: 8000,
   
   // Directorio donde guardar las capturas
   CAPTURES_DIR: path.join(__dirname, '..', 'captures'),
   
-  // Opciones para wkhtmltopdf
+  // Opciones optimizadas para wkhtmltopdf con contenido pesado de JavaScript
   WKHTML_OPTIONS: [
     '--width', '1920',
     '--height', '1080', 
     '--format', 'png',
     '--quality', '90',
-    '--javascript-delay', '3000',
+    '--javascript-delay', '8000',  // Más tiempo para JS
     '--no-stop-slow-scripts',
-    '--debug-javascript'
+    '--debug-javascript',
+    '--enable-javascript',
+    '--load-error-handling', 'ignore',
+    '--load-media-error-handling', 'ignore',
+    '--enable-local-file-access',
+    '--disable-smart-shrinking',
+    '--user-style-sheet', '/dev/null'  // Evitar conflictos de CSS
   ]
 };
 
@@ -79,19 +85,35 @@ async function captureRadarScreenshot() {
     const fileName = generateFileName();
     const filePath = path.join(CONFIG.CAPTURES_DIR, fileName);
     
-    // Construir comando wkhtmltoimage
+    // User-Agent realista para evitar bloqueos
+    const userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    
+    // Construir comando wkhtmltoimage con configuración completa
     const wkhtmlCommand = [
       'wkhtmltoimage',
       ...CONFIG.WKHTML_OPTIONS,
+      '--custom-header', 'Accept-Language', 'en-US,en;q=0.9',
+      '--user-agent', `"${userAgent}"`,
+      '--cookie-jar', '/tmp/cookies.txt',
       `"${CONFIG.WINDY_URL}"`,
       `"${filePath}"`
     ].join(' ');
     
-    console.log('📸 Ejecutando captura...');
+    console.log('📸 Ejecutando captura con configuración optimizada...');
     console.log(`🔧 Comando: ${wkhtmlCommand}`);
     
-    // Ejecutar captura
-    const { stdout, stderr } = await execAsync(wkhtmlCommand);
+    // Configurar variables de entorno para mejor renderizado
+    const env = {
+      ...process.env,
+      QT_QPA_PLATFORM: 'offscreen',
+      DISPLAY: process.env.DISPLAY || ':99'
+    };
+    
+    // Ejecutar captura con timeout extendido
+    const { stdout, stderr } = await execAsync(wkhtmlCommand, { 
+      timeout: 60000,  // 60 segundos timeout
+      env: env
+    });
     
     if (stderr && !stderr.includes('Warning')) {
       console.log(`⚠️  Advertencia: ${stderr}`);
