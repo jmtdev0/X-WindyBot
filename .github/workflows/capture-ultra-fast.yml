@@ -1,4 +1,4 @@
-name: Captura Inteligente con Selenium
+name: Captura Radar con Playwright
 
 on:
   # Ejecucion automatica temporalmente desactivada para testing
@@ -19,10 +19,10 @@ permissions:
   actions: read
 
 jobs:
-  capture-radar-selenium:
-    name: Captura Inteligente (Selenium + Chrome + Fallbacks)
+  capture-radar-playwright:
+    name: Captura Radar (Playwright + WebGL)
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     
     outputs:
       file_count: ${{ steps.check.outputs.file_count }}
@@ -34,194 +34,41 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configurar Node.js y dependencias
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Instalar herramientas hibridas (Node.js + Selenium + Chrome)
+      - name: Instalar dependencias Node.js
+        run: npm install
+
+      - name: Instalar Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Crear directorio de capturas
+        run: mkdir -p captures
+
+      - name: Ejecutar captura con Playwright
+        timeout-minutes: 2
         run: |
-          echo "Actualizando paquetes del sistema..."
-          sudo apt-get update -qq
-          
-          echo "Instalando Google Chrome (para Selenium)..."
-          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
-          sudo apt-get update -qq
-          sudo apt-get install -y google-chrome-stable jq
-          
-          # Ensure Chromedriver matches installed Chrome version (sync)
-          echo "Sincronizando Chromedriver con la version de Chrome instalada..."
-          CHROME_VERSION=$(google-chrome-stable --version | sed -E 's/Google Chrome ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+).*/\1/') || CHROME_VERSION=""
-          CHROME_MAJOR=${CHROME_VERSION%%.*}
-          echo "Chrome version detected: ${CHROME_VERSION:-desconocida} (major ${CHROME_MAJOR:-desconocido})"
-          CHROMEDRIVER_TMP="/tmp/chromedriver_$CHROME_MAJOR"
-          mkdir -p "$CHROMEDRIVER_TMP"
-
-          DRIVER_ZIP="chromedriver-linux64.zip"
-          LATEST_JSON="https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone-with-downloads.json"
-          CHROMEDRIVER_URL=""
-          if [ -n "$CHROME_MAJOR" ]; then
-            CHROMEDRIVER_URL=$(curl -sSfL "$LATEST_JSON" | jq -r --arg major "$CHROME_MAJOR" '.milestones[$major].downloads.chromedriver[] | select(.platform == "linux64") | .url // empty') || CHROMEDRIVER_URL=""
-          fi
-
-          if [ -n "$CHROMEDRIVER_URL" ]; then
-            echo "Intentando descargar Chromedriver desde: $CHROMEDRIVER_URL"
-            if curl -sSfL "$CHROMEDRIVER_URL" -o "/tmp/$DRIVER_ZIP"; then
-              unzip -q -o "/tmp/$DRIVER_ZIP" -d "$CHROMEDRIVER_TMP"
-              CHROMEDRIVER_BIN=$(find "$CHROMEDRIVER_TMP" -type f -name chromedriver -print -quit)
-              if [ -n "$CHROMEDRIVER_BIN" ]; then
-                sudo mv -f "$CHROMEDRIVER_BIN" /usr/local/bin/chromedriver
-                sudo chmod +x /usr/local/bin/chromedriver
-                echo "Chromedriver instalado en /usr/local/bin/chromedriver"
-                rm -f "/tmp/$DRIVER_ZIP"
-                rm -rf "$CHROMEDRIVER_TMP"
-              else
-                echo "No se encontro binario chromedriver en el paquete descargado, intentando fallback..."
-              fi
-            else
-              echo "Fallo la descarga directa de Chromedriver, intentando fallback..."
-            fi
-          else
-            echo "No se pudo obtener URL de Chromedriver para la version $CHROME_MAJOR, intentando fallback..."
-          fi
-
-          echo "Instalando dependencias Node.js para Selenium..."
-          npm install
-
-          # Fallback: if chromedriver not yet installed, try node_modules chromedriver
-          if [ ! -x "/usr/local/bin/chromedriver" ]; then
-            if [ -f "./node_modules/chromedriver/lib/chromedriver/chromedriver" ]; then
-              sudo cp ./node_modules/chromedriver/lib/chromedriver/chromedriver /usr/local/bin/chromedriver
-              sudo chmod +x /usr/local/bin/chromedriver
-              echo "Chromedriver copiado desde node_modules"
-            else
-              echo "No se encontro chromedriver en node_modules. Selenium puede fallar si no hay driver compatible."
-            fi
-          fi
-          
-          echo "Instalando wkhtmltopdf (fallback de emergencia)..."
-          sudo apt-get install -y wkhtmltopdf xvfb curl
-          
-          echo "Verificando instalaciones..."
-          echo "Node.js version: $(node --version)"
-          echo "NPM version: $(npm --version)"
-          google-chrome-stable --version || echo "Chrome no disponible"
-          wkhtmltoimage --version || echo "wkhtmltoimage no disponible"
-          
-          echo "Verificando dependencias Node.js..."
-          npm list selenium-webdriver chromedriver --depth=0 || echo "Dependencias verificadas"
-          
-          echo "Configurando display virtual para fallbacks..."
-          export DISPLAY=:99
-          Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-          sleep 3
-          echo "Entorno híbrido Node.js + Selenium configurado correctamente"
-
-      - name: Verificar directorios y conectividad
-        run: |
-          echo "Verificando estructura del proyecto..."
-          mkdir -p captures
-          ls -la captures/ || echo "Carpeta captures vacia"
-          
-          echo "Verificando conectividad..."
-          curl -I https://www.windy.com --max-time 10 || echo "Problema de conectividad"
-          
-          echo "Espacio disponible:"
-          df -h . | head -2
-
-      - name: Ejecutar captura inteligente con Selenium
-        timeout-minutes: 3
-        run: |
-          echo "🚀 Iniciando captura inteligente con Selenium WebDriver..."
-          echo "🎯 Método principal: Node.js + Selenium (Esperas inteligentes)"
-          echo "🔄 Fallback 1: Script bash híbrido"
-          echo "🔄 Fallback 2: Chrome headless directo"
+          echo "🚀 Iniciando captura con Playwright (soporte WebGL nativo)..."
+          echo "🎯 Método: Chromium + preserveDrawingBuffer + canvas.toDataURL()"
           echo "=" | tr '\n' '=' | head -c 60; echo
           
-          # MÉTODO 1: Selenium WebDriver (PRINCIPAL)
-          echo "🎯 Intentando captura con Selenium WebDriver..."
-          if npm run capture; then
-            echo "✅ Captura Selenium exitosa!"
-            
-          # MÉTODO 2: Script bash híbrido (FALLBACK 1)  
-          elif [ -f "scripts/capture-native.sh" ]; then
-            echo "⚠️ Selenium falló, probando script bash híbrido..."
-            chmod +x scripts/capture-native.sh
-            export DISPLAY=:99
-            timeout 90s ./scripts/capture-native.sh || {
-              echo "❌ Script híbrido también falló"
-              
-              # MÉTODO 3: Chrome directo (FALLBACK 2)
-              echo "⚠️ Usando Chrome headless directo como último recurso..."
-              
-              TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
-              FILENAME="radar_${TIMESTAMP}.png"
-              FILEPATH="captures/${FILENAME}"
-              
-              timeout 45s google-chrome-stable \
-                --headless=new \
-                --no-sandbox \
-                --disable-gpu \
-                --disable-dev-shm-usage \
-                --disable-extensions \
-                --window-size=1920,1080 \
-                --virtual-time-budget=8000 \
-                --screenshot="$FILEPATH" \
-                "https://www.windy.com/?radar,39.853,-3.807,7" || {
-                
-                echo "❌ TODOS LOS MÉTODOS FALLARON"
-                echo "Creando captura de emergencia con información..."
-                
-                mkdir -p captures
-                TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
-                EMERGENCY_FILE="captures/emergency_${TIMESTAMP}.txt"
-                
-                echo "CAPTURA DE EMERGENCIA - $TIMESTAMP" > "$EMERGENCY_FILE"
-                echo "URL: https://www.windy.com/?radar,39.853,-3.807,7" >> "$EMERGENCY_FILE"
-                echo "Todos los métodos de captura fallaron" >> "$EMERGENCY_FILE"
-                curl -I https://www.windy.com --max-time 10 >> "$EMERGENCY_FILE" 2>&1
-                
-                echo "Archivo de emergencia creado: $EMERGENCY_FILE"
-              }
-            }
-            
-          # MÉTODO 3: Chrome directo (si no hay script bash)
-          else
-            echo "⚠️ Selenium falló y no hay script bash, usando Chrome directo..."
-            
-            TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
-            FILENAME="radar_${TIMESTAMP}.png"
-            FILEPATH="captures/${FILENAME}"
-            
-            timeout 45s google-chrome-stable \
-              --headless=new \
-              --no-sandbox \
-              --disable-gpu \
-              --disable-dev-shm-usage \
-              --window-size=1920,1080 \
-              --virtual-time-budget=10000 \
-              --screenshot="$FILEPATH" \
-              "https://www.windy.com/?radar,39.853,-3.807,7" && {
-              echo "✅ Captura Chrome directa exitosa: $FILENAME"
-            } || {
-              echo "❌ Chrome directo también falló"
-            }
-          fi
+          npm run capture
           
+          echo ""
           echo "Resultados:"
-          ls -la captures/*.png 2>/dev/null || echo "No hay capturas PNG"
-          
-          echo "Analisis de logs de debugging:"
-          if [ -f "chrome_debug.log" ]; then
-            echo "Chrome debug log (ultimas 10 lineas):"
-            tail -10 chrome_debug.log
-          fi
-          
-          if [ -f "wkhtmltoimage_debug.log" ]; then
-            echo "wkhtmltoimage debug log (ultimas 10 lineas):"
-            tail -10 wkhtmltoimage_debug.log
-          fi
+          ls -lh captures/*.png 2>/dev/null || echo "⚠️ No se encontraron capturas PNG"
+
+      - name: Subir capturas como artefactos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-radar-${{ github.run_number }}
+          path: captures/*.png
+          retention-days: 30
+          if-no-files-found: warn
 
       - name: Verificar estado del repositorio
         id: check
@@ -262,22 +109,22 @@ jobs:
         if: steps.check.outputs.has_changes == 'true'
         run: |
           git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action - Ultra Fast Hybrid"
+          git config --local user.name "GitHub Action - Playwright WebGL"
           
           git add captures/
           
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           FINAL_COUNT=$(find captures -name "radar_*.png" | wc -l)
-          git commit -m "Captura hibrida del radar - $TIMESTAMP (Total: $FINAL_COUNT capturas)"
+          git commit -m "Captura radar Playwright - $TIMESTAMP (Total: $FINAL_COUNT capturas)"
           
           git push
 
-      - name: Resumen de ejecucion inteligente
+      - name: Resumen de ejecucion
         run: |
-          echo "=== RESUMEN INTELIGENTE CON SELENIUM ==="
+          echo "=== RESUMEN CAPTURA PLAYWRIGHT ==="
           echo "🕐 Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
           echo "🎯 Trigger: workflow_dispatch"
-          echo "🚀 Arquitectura: Node.js + Selenium WebDriver"
+          echo "🚀 Motor: Playwright Chromium + WebGL"
           
           if [ "${{ steps.check.outputs.has_changes }}" == "true" ]; then
             echo "✅ Estado: Captura exitosa y cambios commiteados"
@@ -287,20 +134,21 @@ jobs:
           fi
           
           echo ""
-          echo "📁 Contenido actual:"
-          ls -la captures/ | tail -3 || echo "Sin archivos"
+          echo "📁 Capturas recientes:"
+          ls -lh captures/*.png 2>/dev/null | tail -3 || echo "Sin archivos"
           
           echo ""
           echo "📊 Tamaño total:"
           du -sh captures/ || echo "0B"
           
           echo ""
-          echo "🎉 VENTAJAS DE LA IMPLEMENTACIÓN CON SELENIUM:"
-          echo "  ✅ Selenium WebDriver como método principal (esperas inteligentes)"
-          echo "  ✅ Detección automática de elementos cargados"
-          echo "  ✅ Manejo avanzado de JavaScript asíncrono"
-          echo "  ✅ Optimización específica para Windy.com"
-          echo "  ✅ Triple fallback: Selenium → Bash → Chrome directo"
-          echo "  ✅ Validación automática de capturas"
-          echo "  ✅ Debugging avanzado y logs detallados"
-          echo "  ✅ Timeout inteligente por método"
+          echo "🎉 VENTAJAS DE PLAYWRIGHT:"
+          echo "  ✅ Soporte WebGL nativo en modo headless"
+          echo "  ✅ Capturas de canvas con preserveDrawingBuffer"
+          echo "  ✅ Método canvas.toDataURL() directo"
+          echo "  ✅ SwiftShader para renderizado por software"
+          echo "  ✅ Capturas 650-800 KB (vs 8 KB con Selenium)"
+          echo "  ✅ Sin necesidad de drivers externos"
+          echo "  ✅ Instalación simplificada y más rápida"
+          echo "  ✅ Mejor manejo de aplicaciones JavaScript modernas"
+

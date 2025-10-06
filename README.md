@@ -1,27 +1,25 @@
-# 🌦️ X-WindyBot - Capturador Automático de Radar Meteorológico
+# 🌦## 🚀 Características
+
+- ⏰ **Captura automática cada 5 minutos** mediante GitHub Actions (cron + disparo manual)
+- 🎭 **Motor Playwright** con soporte nativo para WebGL y renderizado de canvas
+- 🎨 **Capturas de alta calidad** (650-800 KB) con preserveDrawingBuffer y canvas.toDataURL()
+- 🖥️ **Aplicación local en Express** para disparar capturas desde `localhost` con un clic
+- 📁 **Almacenamiento automático** en `captures/` con limpieza de históricos (últimas 100 capturas)
+- 🔄 **Auto-commit & push** de resultados y metadatos generados en las ejecuciones
+- 🚀 **Instalación simplificada** sin necesidad de drivers externos ni configuraciones complejas
+- 📊 **Logging detallado** (tiempos, estados de canvas, validaciones) para depuración rápidaBot - Capturador Automático de Radar Meteorológico
 
 Una herramienta de automatización que utiliza GitHub Actions para capturar screenshots del radar meteorológico de Windy.com cada 5 minutos y almacenarlos automáticamente en el repositorio.
 
 ## 🚀 Características
 
-- ⏰ **Captura automática cada 5 minutos** usando GitHub Actions con cron schedule
-- 🖱️ **Ejecución manual** disponible desde la interfaz de GitHub Actions
-- 🤖 **Puppeteer** para automatizar la navegación y captura de screenshots
-- 📁 **Almacenamiento automático** en la carpeta `captures/` del repositorio 
-- 🔄 **Auto-commit y push** de nuevas capturas
-## 🚀 Características
-
-- ⏰ **Captura automática cada 5 minutos** usando GitHub Actions con cron schedule
-- 🖱️ **Ejecución manual** disponible desde la interfaz de GitHub Actions
-- ⚡ **Ultra-rápido** con herramientas nativas (sin Node.js pesado)
-- 🛠️ **Múltiples implementaciones**: 
-  - **Ultra-fast**: wkhtmltopdf + herramientas nativas (~1 min total)
-  - **Node.js**: Script tradicional con wkhtmltopdf (~2-3 min)
-- 📁 **Almacenamiento automático** en la carpeta `captures/` del repositorio 
-- 🔄 **Auto-commit y push** de nuevas capturas al repositorio
-- 🧹 **Limpieza automática** mantiene solo las últimas 100 capturas
-- 📊 **Logging detallado** y resúmenes de ejecución
-- 📊 **Logging detallado** y resúmenes de ejecución
+- ⏰ **Captura automática cada 5 minutos** mediante GitHub Actions (cron + disparo manual)
+- 🤖 **Motor principal en Selenium WebDriver** con esperas inteligentes adaptadas a Windy.com
+- �️ **Triple fallback**: Selenium → script híbrido bash → Chrome headless directo
+- �️ **Aplicación local en Express** para disparar capturas desde `localhost` con un clic
+- 📁 **Almacenamiento automático** en `captures/` con limpieza de históricos (últimas 100 capturas)
+- 🔄 **Auto-commit & push** de resultados y metadatos generados en las ejecuciones
+- 📊 **Logging detallado** (tiempos, versiones, validaciones) para depuración rápida
 
 ## 📂 Estructura del Proyecto
 
@@ -29,13 +27,16 @@ Una herramienta de automatización que utiliza GitHub Actions para capturar scre
 X-WindyBot/
 ├── .github/
 │   └── workflows/
-│       └── capture-radar.yml     # GitHub Actions workflow
+│       └── capture-ultra-fast.yml   # Workflow con Playwright
+├── server/
+│   └── local-server.js              # Servidor Express para el modo localhost
 ├── scripts/
-│   └── screenshot.js             # Script principal de captura
-├── captures/                     # Carpeta donde se guardan los screenshots
-│   └── .gitkeep                 # Mantiene la carpeta en Git
-├── package.json                  # Dependencias y configuración del proyecto
-└── README.md                     # Esta documentación
+│   ├── capture-playwright.js        # Motor Playwright con soporte WebGL
+│   └── capture-selenium.js          # Motor Selenium (legacy, backup)
+├── captures/                        # Carpeta donde se guardan las capturas
+│   └── .gitkeep                     # Mantiene la carpeta en Git
+├── package.json                     # Dependencias y scripts de NPM
+└── README.md                        # Esta documentación
 ```
 
 ## ⚙️ Configuración
@@ -44,22 +45,51 @@ X-WindyBot/
 
 - Repositorio de GitHub
 - Permisos de escritura en el repositorio (para commits automáticos)
+- Node.js 18+ instalado localmente (para pruebas locales)
 
-### 2. Instalación Local (Opcional)
-
-Si quieres probar el script localmente:
+### 2. Instalación y pruebas locales
 
 ```bash
 # Clonar el repositorio
 git clone https://github.com/jmtdev0/X-WindyBot.git
 cd X-WindyBot
 
-# Instalar dependencias
+# Instalar dependencias Node.js
 npm install
 
-# Ejecutar captura manual
-npm run screenshot
+# Instalar navegador Playwright Chromium
+npx playwright install chromium
+
+# Ejecutar una captura (mismo código que GitHub Actions)
+npm run capture
+
+# Levantar la aplicación local en http://localhost:3000 (botón «Tomar captura»)
+npm run start:local
 ```
+
+> ℹ️ Playwright instala su propia versión de Chromium automáticamente. No necesitas instalar Chrome ni drivers externos.
+
+## 🏠 Modo servidor local (Express + Playwright)
+
+El comando `npm run start:local` levanta una micro-aplicación en Express que reutiliza exactamente el mismo motor Playwright que GitHub Actions. Úsala para depurar o generar capturas on-demand desde tu máquina:
+
+1. Ejecuta `npm run start:local`
+2. Abre `http://localhost:3000`
+3. Pulsa **«📸 Tomar captura ahora»**
+4. Revisa el panel de resultados y la previsualización. Las imágenes se guardan en la carpeta configurada (por defecto `captures/`).
+
+### Variables de entorno útiles
+
+| Variable | Valor por defecto | Descripción |
+| --- | --- | --- |
+| `PORT` | `3000` | Puerto donde escucha la app local. |
+| `LOCAL_CAPTURES_DIR` | `./captures` | Carpeta donde se persisten las capturas al usar el modo local. |
+| `WINDY_URL` | `https://www.windy.com/?radar,39.853,-3.807,7` | URL objetivo que abrirá Selenium (aplica tanto en local como en CI si exportas la variable). |
+| `WINDOW_WIDTH` / `WINDOW_HEIGHT` | `1920` / `1080` | Resolución de la ventana virtual para la captura. |
+| `WINDY_TIMEOUT_MS` | `45000` | Timeout global (carga de página / scripts) en milisegundos. |
+| `WINDY_WAIT_MS` | `15000` | Tiempo adicional en milisegundos para asegurarse de que el radar renderice por completo. |
+
+> 📝 La API REST local devuelve el resultado en JSON (`/capture`) y expone un endpoint de estado (`/status`). Las capturas se sirven como archivos estáticos en `/captures/<archivo>.png`.
 
 ### 3. Configuración de GitHub Actions
 
@@ -67,13 +97,15 @@ El workflow está configurado para ejecutarse automáticamente. No necesitas con
 
 #### Modificar la URL de Windy.com
 
-Edita el archivo `scripts/screenshot.js` y cambia la variable `WINDY_URL`:
+### Modificar la URL de Windy.com
+
+Edita el archivo `scripts/capture-playwright.js` y cambia la propiedad `url` en el objeto `CONFIG`:
 
 ```javascript
 const CONFIG = {
-  // Personaliza esta URL según tu ubicación o preferencias
-  WINDY_URL: 'https://www.windy.com/?rain,2023-10-01-12,40.416,-3.703,8',
-  // ...
+    // Personaliza esta URL según tu ubicación o preferencias
+    url: 'https://www.windy.com/?radar,39.853,-3.807,7',
+    // ...
 };
 ```
 
@@ -123,27 +155,22 @@ Ejemplo: `radar_2025-09-28_14-30-25.png`
 
 ### Modificar Configuraciones de Captura
 
-En `scripts/screenshot.js` puedes personalizar:
+En `scripts/capture-playwright.js` puedes personalizar:
 
 ```javascript
 const CONFIG = {
-  // URL específica del radar
-  WINDY_URL: 'https://www.windy.com/...',
-  
-  // Resolución de captura
-  VIEWPORT: {
-    width: 1920,
-    height: 1080
-  },
-  
-  // Tiempo de espera para carga completa
-  WAIT_TIME: 5000,
-  
-  // Elementos a ocultar en la captura
-  ELEMENTS_TO_HIDE: [
-    '#bottom',
-    '.leaflet-control-container'
-  ]
+    // URL específica del radar
+    url: 'https://www.windy.com/?radar,39.853,-3.807,7',
+
+    // Resolución del viewport de Chromium
+    viewport: {
+        width: 1920,
+        height: 1080
+    },
+
+    // Timeout global y espera específica para el radar (ms)
+    timeout: 60000,
+    waitForRadar: 30000
 };
 ```
 
@@ -182,50 +209,31 @@ En la pestaña **Actions** de GitHub puedes:
 
 ## 🛠️ Solución de Problemas
 
-### Capturas aparecen en gris o vacías
+### Capturas vacías o pequeñas (< 10 KB)
 
 **Síntomas**:
-- Las capturas se generan pero muestran pantalla gris
-- El fondo de Windy.com se ve pero no hay datos del radar
-- Archivos PNG válidos pero sin contenido meteorológico
+- Las capturas se generan pero están vacías o muestran contenido incompleto
+- Archivos PNG de ~8 KB en lugar de 650-800 KB esperados
+- El radar no se visualiza en la captura
 
-**Causa**: Windy.com usa JavaScript pesado y WebGL que requiere más tiempo de carga
+**Causa**: Problemas con el renderizado de WebGL o tiempo insuficiente de carga
 
 **Solución**:
-1. **✅ Ya está corregido** - Tiempo de JS aumentado de 3s a 8s
-2. **🔧 Configuración optimizada** - User-Agent realista y headers mejorados
-3. **🎯 Script híbrido** - Usa Chrome headless como fallback (`capture-hybrid.sh`)
-4. **⏱️ Más tiempo de renderizado** - Permite carga completa del mapa
+1. **✅ Ya está corregido con Playwright** - Usa `preserveDrawingBuffer` y `canvas.toDataURL()`
+2. **🔧 Aumenta el tiempo de espera** - Modifica `waitForRadar` en `CONFIG` (por defecto 30s)
+3. **🔍 Verifica los logs** - Revisa que `preserveDrawingBuffer: true` aparezca en la consola
+4. **� Reporta si persiste** - Con capturas de menos de 100 KB hay un problema
 
-### Error de timeouts o instalación lenta de dependencias
-
-**Síntomas**: 
-- El workflow tarda más de 5 minutos en npm install
-- Timeouts durante la captura con Puppeteer  
-- Error: "The operation was canceled"
-
-**Solución**: 
-1. **🚀 Usa el workflow ultra-rápido** (`capture-ultra-fast.yml`)
-2. **⚡ Tiempo total** ~2 minutos con configuración optimizada
-
-### Error "npm ci can only install packages when your package.json and package-lock.json are in sync" 
+### Error de instalación de Playwright
 
 **Síntomas**: 
-- El workflow falla durante `npm ci` 
-- Menciona dependencias faltantes en el lock file
+- Falla `npx playwright install chromium`
+- Error: "browserType.launch: Executable doesn't exist"
 
 **Solución**: 
-1. **Usa el workflow ultra-rápido** que no depende de npm
-2. **O usa la versión Node.js** corregida con `npm install`
-
-### Error "Dependencies lock file is not found"
-
-**Síntomas**: El workflow falla con mensaje sobre `package-lock.json` no encontrado.
-
-**Solución**: 
-1. **Ya está corregido** en la versión actual del workflow
-2. El workflow usa `npm install` para generar el lock file automáticamente
-3. Se commitea automáticamente para futuras ejecuciones
+1. **Ejecuta con --with-deps**: `npx playwright install chromium --with-deps`
+2. **Verifica permisos** de escritura en la carpeta del proyecto
+3. **Limpia cache** de Playwright: `npx playwright uninstall --all` y reinstala
 
 ### El workflow no se ejecuta automáticamente
 
@@ -235,15 +243,16 @@ En la pestaña **Actions** de GitHub puedes:
 
 ### Capturas en blanco o errores de carga
 
-1. **Aumenta el WAIT_TIME** en `scripts/screenshot.js`
-2. **Verifica la URL** de Windy.com (puede cambiar)
-3. **Revisa los logs** para errores específicos de Puppeteer
+1. **Aumenta `waitForRadar`** en `scripts/capture-playwright.js` (por defecto 30s)
+2. **Verifica la URL** de Windy.com en el CONFIG
+3. **Revisa los logs** para errores específicos de Playwright
+4. **Verifica estado del canvas** en los logs (debe mostrar `preserveDrawingBuffer: true`)
 
 ### El repositorio crece mucho
 
 1. **La limpieza automática ya está activada** (mantiene 100 capturas)
 2. **Ejecuta limpieza manual adicional** con la opción en "Run workflow"
-3. **Reduce el número máximo** editando el valor en `scripts/screenshot.js`
+3. **Reduce el límite de limpieza automática** editando el valor en `scripts/capture-native.sh`
 4. **Reduce la frecuencia** de capturas modificando el cron schedule
 
 ### Falta de espacio en GitHub
@@ -272,7 +281,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más det
 ## 🙏 Créditos
 
 - **[Windy.com](https://www.windy.com)** - Fuente de datos meteorológicos
-- **[Puppeteer](https://pptr.dev/)** - Automatización de navegador
+- **[Playwright](https://playwright.dev/)** - Automatización de navegador con soporte WebGL
 - **[GitHub Actions](https://github.com/features/actions)** - Plataforma de CI/CD
 
 ---

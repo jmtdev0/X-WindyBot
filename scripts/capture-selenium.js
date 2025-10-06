@@ -5,7 +5,7 @@
  * Optimizado para sitios JavaScript pesados con esperas inteligentes
  */
 
-const { Builder, By, until, Key } = require('selenium-webdriver');
+const { Builder } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const { existsSync } = require('fs');
 const fs = require('fs').promises;
@@ -15,139 +15,152 @@ const path = require('path');
 const CONFIG = {
     url: 'https://www.windy.com/?radar,39.853,-3.807,7',
     capturesDir: './captures',
-    timeout: 45000, // 45 segundos timeout total
-    waitForRadar: 15000, // 15 segundos específicos para el radar
+    timeout: 45000,
+    waitForRadar: 20000,
     windowSize: { width: 1920, height: 1080 }
 };
 
 class WindyCapture {
-    constructor() {
+    constructor(customConfig = {}) {
+        this.config = { ...CONFIG, ...customConfig };
         this.driver = null;
         this.timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         this.filename = `radar_${this.timestamp}.png`;
-        this.filepath = path.join(CONFIG.capturesDir, this.filename);
+        this.filepath = path.join(this.config.capturesDir, this.filename);
     }
 
     async setupDriver() {
-        console.log('🚀 Configurando Chrome con Selenium WebDriver...');
-        
+        console.log('🚀 Configurando Chrome con Selenium WebDriver (modo simplificado)...');
+
         const chromeOptions = new chrome.Options();
-        
-        // Determinar la ruta correcta de Chromedriver instalada en el runner
-        const candidateDriverPaths = [
-            process.env.CHROMEDRIVER_PATH,
-            '/usr/local/bin/chromedriver',
-            (() => {
-                try {
-                    const chromedriver = require('chromedriver');
-                    if (chromedriver && chromedriver.path) {
-                        return chromedriver.path;
-                    }
-                } catch (err) {
-                    // Ignorar si el paquete no expone la ruta o no existe
-                }
-                return null;
-            })()
-        ].filter(Boolean);
 
-        let driverPathApplied = false;
-        for (const candidate of candidateDriverPaths) {
-            if (existsSync(candidate)) {
-                chrome.setDefaultService(new chrome.ServiceBuilder(candidate).build());
-                process.env.WEBDRIVER_CHROME_DRIVER = candidate;
-                console.log(`🛠️ Chromedriver seleccionado: ${candidate}`);
-                driverPathApplied = true;
-                break;
-            }
-        }
-
-        if (!driverPathApplied) {
-            console.warn('⚠️ No se encontró un Chromedriver específico, Selenium intentará resolverlo automáticamente.');
-        }
-
-        // Opciones optimizadas para GitHub Actions
         chromeOptions
-            .addArguments('--headless=new')
+            // .addArguments('--headless=new')  // Temporalmente deshabilitado para diagnóstico
             .addArguments('--no-sandbox')
             .addArguments('--disable-dev-shm-usage')
-            .addArguments('--disable-gpu')
             .addArguments('--disable-extensions')
             .addArguments('--disable-plugins')
             .addArguments('--disable-background-timer-throttling')
             .addArguments('--disable-backgrounding-occluded-windows')
             .addArguments('--disable-renderer-backgrounding')
-            .addArguments('--disable-features=TranslateUI,VizDisplayCompositor')
             .addArguments('--no-first-run')
             .addArguments('--no-default-browser-check')
-            .addArguments('--disable-logging')
-            .addArguments('--disable-breakpad')
-            .addArguments(`--window-size=${CONFIG.windowSize.width},${CONFIG.windowSize.height}`)
-            .addArguments('--disable-web-security')
-            .addArguments('--aggressive-cache-discard');
+            .addArguments(`--window-size=${this.config.windowSize.width},${this.config.windowSize.height}`)
+            .addArguments('--disable-gpu-sandbox')
+            .addArguments('--use-angle=swiftshader')
+            .addArguments('--use-gl=angle')
+            .addArguments('--enable-webgl')
+            .addArguments('--enable-features=WebGL')
+            .addArguments('--ignore-gpu-blocklist')
+            .addArguments('--enable-logging=stderr')
+            .addArguments('--v=1');
 
-        this.driver = await new Builder()
+        const driverBuilder = new Builder()
             .forBrowser('chrome')
-            .setChromeOptions(chromeOptions)
-            .build();
+            .setChromeOptions(chromeOptions);
+
+        const customService = this.buildCustomChromeService();
+        if (customService) {
+            driverBuilder.setChromeService(customService.service);
+            console.log(`🔗 Chromedriver personalizado aplicado (${customService.source})`);
+        }
+
+        this.driver = await driverBuilder.build();
 
         // Configurar timeouts
         await this.driver.manage().setTimeouts({
-            implicit: 10000,
-            pageLoad: CONFIG.timeout,
-            script: CONFIG.timeout
+            implicit: 0,
+            pageLoad: this.config.timeout,
+            script: this.config.timeout
         });
 
-        console.log('✅ Driver configurado correctamente');
+        console.log('✅ Driver configurado correctamente (Selenium Manager manejará Chromedriver)');
+    }
+
+    buildCustomChromeService() {
+        const candidates = [];
+
+        if (process.env.CHROMEDRIVER_PATH) {
+            candidates.push({
+                path: process.env.CHROMEDRIVER_PATH,
+                source: 'CHROMEDRIVER_PATH'
+            });
+        }
+
+        try {
+            const chromedriver = require('chromedriver');
+            const driverPath = chromedriver && chromedriver.path;
+            const driverVersion = (() => {
+                try {
+                    return require('chromedriver/package.json').version;
+                } catch (err) {
+                    return 'unknown';
+                }
+            })();
+
+            if (driverPath) {
+                candidates.push({
+                    path: driverPath,
+                    source: `chromedriver npm package v${driverVersion}`
+                });
+            }
+        } catch (err) {
+            // Ignorar si el paquete no está disponible
+        }
+
+        for (const candidate of candidates) {
+            if (candidate.path && existsSync(candidate.path)) {
+                process.env.WEBDRIVER_CHROME_DRIVER = candidate.path;
+                return {
+                    service: new chrome.ServiceBuilder(candidate.path),
+                    source: candidate.source
+                };
+            }
+        }
+
+        console.log('ℹ️  Usando Selenium Manager para resolver Chromedriver automáticamente');
+        return null;
     }
 
     async navigateToWindy() {
         console.log('🌐 Navegando a Windy.com...');
-        console.log(`📍 URL: ${CONFIG.url}`);
-        
-        await this.driver.get(CONFIG.url);
+        console.log(`📍 URL: ${this.config.url}`);
+
+        await this.driver.get(this.config.url);
         console.log('✅ Página cargada');
     }
 
     async waitForWindyToLoad() {
-        console.log('⏳ Esperando que Windy.com cargue completamente...');
+        console.log(`⏳ Esperando ${this.config.waitForRadar / 1000}s para estabilizar Windy.com...`);
+        await this.driver.sleep(this.config.waitForRadar);
         
+        // Verificar que el canvas del mapa esté presente
         try {
-            // Esperar a que aparezca el elemento principal del mapa
-            const mapContainer = await this.driver.wait(
-                until.elementLocated(By.css('#map, .leaflet-container, #windy-map, [class*="map"]')),
-                20000
-            );
-            console.log('🗺️ Contenedor del mapa detectado');
-
-            // Esperar a que se carguen las capas del radar
-            console.log('📡 Esperando carga del radar meteorológico...');
-            await this.driver.sleep(CONFIG.waitForRadar);
-
-            // Intentar detectar si hay elementos de carga activos
-            try {
-                await this.driver.wait(async () => {
-                    const loadingElements = await this.driver.findElements(
-                        By.css('.loading, [class*="loading"], [class*="spinner"], .loader')
-                    );
-                    return loadingElements.length === 0;
-                }, 10000);
-                console.log('✅ Elementos de carga completados');
-            } catch (err) {
-                console.log('⚠️ No se detectaron indicadores de carga específicos');
-            }
-
-            // Scroll para activar lazy loading si existe
-            await this.driver.executeScript('window.scrollTo(0, 100); window.scrollTo(0, 0);');
+            const canvasCheck = await this.driver.executeScript(`
+                const canvas = document.querySelector('canvas');
+                if (!canvas) return { found: false, error: 'No canvas element' };
+                
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return { found: false, error: 'No context' };
+                
+                // Verificar que el canvas no esté vacío
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const hasContent = imageData.data.some((pixel, i) => i % 4 === 3 && pixel > 0);
+                
+                return { 
+                    found: true, 
+                    hasContent,
+                    width: canvas.width,
+                    height: canvas.height
+                };
+            `);
             
-            // Espera adicional para asegurar renderizado completo
-            await this.driver.sleep(3000);
-            
-            console.log('✅ Windy.com completamente cargado y listo para captura');
-            
-        } catch (error) {
-            console.log('⚠️ Timeout esperando elementos específicos, continuando con captura...');
-            console.log(`Error: ${error.message}`);
+            console.log('🗺️ Estado del canvas:', JSON.stringify(canvasCheck));
+        } catch (err) {
+            console.log('⚠️ No se pudo verificar el canvas:', err.message);
         }
+        
+        console.log('✅ Tiempo de espera completado');
     }
 
     async optimizeForScreenshot() {
@@ -185,7 +198,7 @@ class WindyCapture {
         console.log('📸 Tomando captura de pantalla...');
         
         // Asegurar que el directorio existe
-        await fs.mkdir(CONFIG.capturesDir, { recursive: true });
+        await fs.mkdir(this.config.capturesDir, { recursive: true });
         
         // Tomar la captura
         const screenshot = await this.driver.takeScreenshot();
@@ -239,60 +252,80 @@ class WindyCapture {
     }
 }
 
-// Función principal
-async function main() {
-    const capture = new WindyCapture();
-    
+async function runSeleniumCapture(customConfig = {}) {
+    const capture = new WindyCapture(customConfig);
+    const result = {
+        success: false,
+        validationPassed: false,
+        filepath: capture.filepath,
+        filename: capture.filename,
+        timestamp: capture.timestamp,
+        pageInfo: null,
+        config: capture.config
+    };
+
+    console.log('🚀 Iniciando captura inteligente de Windy.com con Selenium');
+    console.log(`⏰ Timestamp: ${capture.timestamp}`);
+    console.log(`📁 Destino: ${capture.filepath}`);
+    console.log('='.repeat(60));
+
     try {
-        console.log('🚀 Iniciando captura inteligente de Windy.com con Selenium');
-        console.log(`⏰ Timestamp: ${capture.timestamp}`);
-        console.log(`📁 Destino: ${capture.filepath}`);
-        console.log('=' .repeat(60));
-        
         await capture.setupDriver();
         await capture.navigateToWindy();
         await capture.waitForWindyToLoad();
         await capture.optimizeForScreenshot();
-        
-        const screenshotPath = await capture.takeScreenshot();
-        await capture.getPageInfo();
-        
+
+        result.filepath = await capture.takeScreenshot();
+        result.pageInfo = await capture.getPageInfo();
+
         const isValid = await capture.validateScreenshot();
-        
-        console.log('=' .repeat(60));
+        result.success = isValid;
+        result.validationPassed = isValid;
+
+        console.log('='.repeat(60));
         console.log('🎉 CAPTURA COMPLETADA EXITOSAMENTE');
         console.log(`📸 Archivo: ${capture.filename}`);
         console.log(`✅ Validación: ${isValid ? 'EXITOSA' : 'CON ADVERTENCIAS'}`);
-        
-        // Salir con código apropiado
-        process.exit(isValid ? 0 : 1);
-        
+
+        return result;
     } catch (error) {
-        console.error('❌ ERROR EN LA CAPTURA:');
-        console.error(error.message);
-        console.error(error.stack);
-        
-        process.exit(1);
-        
+        error.capturePath = capture.filepath;
+        error.captureTimestamp = capture.timestamp;
+        error.captureConfig = capture.config;
+        throw error;
     } finally {
         await capture.cleanup();
     }
 }
 
-// Manejar señales de terminación
-process.on('SIGINT', async () => {
-    console.log('\n⚠️ Proceso interrumpido por usuario');
-    process.exit(1);
-});
-
-process.on('SIGTERM', async () => {
-    console.log('\n⚠️ Proceso terminado por sistema');
-    process.exit(1);
-});
+// Función principal para CLI
+async function main() {
+    try {
+        const result = await runSeleniumCapture();
+        process.exit(result.success ? 0 : 1);
+    } catch (error) {
+        console.error('❌ ERROR EN LA CAPTURA:');
+        console.error(error.message);
+        if (error.stack) {
+            console.error(error.stack);
+        }
+        process.exit(1);
+    }
+}
 
 // Ejecutar si es llamado directamente
 if (require.main === module) {
+    process.on('SIGINT', () => {
+        console.log('\n⚠️ Proceso interrumpido por usuario');
+        process.exit(1);
+    });
+
+    process.on('SIGTERM', () => {
+        console.log('\n⚠️ Proceso terminado por sistema');
+        process.exit(1);
+    });
+
     main();
 }
 
-module.exports = { WindyCapture, CONFIG };
+module.exports = { WindyCapture, CONFIG, runSeleniumCapture };
