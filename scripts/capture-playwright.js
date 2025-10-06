@@ -184,37 +184,92 @@ class WindyPlaywrightCapture {
         // Asegurar que el directorio existe
         await fs.mkdir(this.config.capturesDir, { recursive: true });
 
-        // Método 1: Intentar capturar directamente desde el canvas
+        // Esperar un frame adicional para asegurar que WebGL ha renderizado
+        console.log('   ⏳ Esperando frame final de WebGL...');
+        await this.page.waitForTimeout(2000);
+
+        // Verificar el estado del canvas justo antes de capturar
+        const canvasCheck = await this.page.evaluate(() => {
+            const canvas = document.querySelector('canvas');
+            if (!canvas) return { found: false };
+            
+            // Intentar forzar un render
+            const ctx = canvas.getContext('webgl2') || canvas.getContext('webgl');
+            if (ctx) {
+                ctx.flush();
+                ctx.finish();
+            }
+            
+            return {
+                found: true,
+                width: canvas.width,
+                height: canvas.height,
+                hasContent: canvas.width > 0 && canvas.height > 0
+            };
+        });
+        console.log('   🔍 Estado del canvas pre-captura:', JSON.stringify(canvasCheck));
+
+        // Método 1: Captura directa del canvas (más confiable para WebGL)
         try {
-            console.log('   Método 1: Captura directa del canvas...');
+            console.log('   Método 1: Captura directa del canvas con toDataURL()...');
             const canvasDataUrl = await this.page.evaluate(() => {
                 const canvas = document.querySelector('canvas');
                 if (!canvas) return null;
-                return canvas.toDataURL('image/png');
+                
+                try {
+                    // Intentar capturar el canvas
+                    return canvas.toDataURL('image/png');
+                } catch (err) {
+                    console.error('Error en toDataURL:', err);
+                    return null;
+                }
             });
 
-            if (canvasDataUrl) {
+            if (canvasDataUrl && canvasDataUrl.length > 1000) {
                 // Convertir data URL a buffer
                 const base64Data = canvasDataUrl.replace(/^data:image\/png;base64,/, '');
                 const buffer = Buffer.from(base64Data, 'base64');
                 
                 await fs.writeFile(this.filepath, buffer);
-                console.log(`✅ Captura guardada desde canvas: ${this.filename}`);
-                return this.filepath;
+                const stats = await fs.stat(this.filepath);
+                console.log(`✅ Captura guardada desde canvas: ${this.filename} (${Math.round(stats.size/1024)} KB)`);
+                
+                if (stats.size > 10000) {
+                    return this.filepath;
+                } else {
+                    console.log(`⚠️ Captura muy pequeña, intentando método alternativo...`);
+                }
+            } else {
+                console.log(`⚠️ Canvas dataURL vacío o muy pequeño (longitud: ${canvasDataUrl ? canvasDataUrl.length : 0})`);
             }
         } catch (err) {
             console.log(`⚠️ Falló captura directa del canvas: ${err.message}`);
         }
 
-        // Método 2: Fallback a screenshot normal de la página
-        console.log('   Método 2: Screenshot normal de la página...');
-        await this.page.screenshot({
-            path: this.filepath,
-            fullPage: false
-        });
+        // Método 2: Screenshot de página (fallback)
+        try {
+            console.log('   Método 2: Screenshot de página completa...');
+            await this.page.screenshot({
+                path: this.filepath,
+                fullPage: false,
+                type: 'png',
+                animations: 'disabled'
+            });
+            
+            const stats = await fs.stat(this.filepath);
+            console.log(`✅ Captura guardada vía screenshot: ${this.filename} (${Math.round(stats.size/1024)} KB)`);
+            
+            if (stats.size > 10000) {
+                return this.filepath;
+            } else {
+                console.log(`⚠️ Screenshot muy pequeño (${stats.size} bytes)`);
+            }
+        } catch (err) {
+            console.log(`⚠️ Falló screenshot de página: ${err.message}`);
+        }
 
-        console.log(`✅ Captura guardada: ${this.filename}`);
-        return this.filepath;
+        // Si llegamos aquí, algo salió mal
+        throw new Error('Todos los métodos de captura fallaron - archivos demasiado pequeños');
     }
 
     async getPageInfo() {
