@@ -84,9 +84,49 @@ jobs:
           echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
           echo "📊 Total de capturas en el repositorio: $FILE_COUNT"
           
+          # Verificar si hay una captura nueva
+          LATEST_CAPTURE=$(ls -t captures/radar_*.png 2>/dev/null | head -1)
+          if [ -n "$LATEST_CAPTURE" ]; then
+            CAPTURE_SIZE=$(stat -f%z "$LATEST_CAPTURE" 2>/dev/null || stat -c%s "$LATEST_CAPTURE" 2>/dev/null || echo "0")
+            CAPTURE_SIZE_KB=$((CAPTURE_SIZE / 1024))
+            echo "capture_valid=true" >> $GITHUB_OUTPUT
+            echo "✅ Última captura: $(basename "$LATEST_CAPTURE") (${CAPTURE_SIZE_KB} KB)"
+          else
+            echo "capture_valid=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No se encontró captura reciente"
+          fi
+          
           echo ""
           echo "📁 Capturas recientes:"
           ls -lht captures/*.png 2>/dev/null | head -5 || echo "Sin archivos"
+
+      - name: Publicar en Twitter/X
+        if: steps.check.outputs.capture_valid == 'true'
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+          RADAR_LAT: ${{ vars.RADAR_LAT }}
+          RADAR_LON: ${{ vars.RADAR_LON }}
+          RADAR_ZOOM: ${{ vars.RADAR_ZOOM }}
+          TWITTER_INCLUDE_LINK: ${{ vars.TWITTER_INCLUDE_LINK || 'true' }}
+          TWITTER_CUSTOM_MESSAGE: ${{ vars.TWITTER_CUSTOM_MESSAGE }}
+        run: |
+          # Usar valores por defecto si no están definidas
+          export RADAR_LAT=${RADAR_LAT:-39.418}
+          export RADAR_LON=${RADAR_LON:--5.160}
+          export RADAR_ZOOM=${RADAR_ZOOM:-6}
+          
+          echo "🐦 Publicando captura en Twitter/X..."
+          
+          # Solo publicar si las credenciales están configuradas
+          if [ -z "$TWITTER_API_KEY" ]; then
+            echo "⏭️ Credenciales de Twitter no configuradas, saltando publicación"
+            echo "ℹ️ Para habilitar, configura los secrets: TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET"
+          else
+            npm run publish:twitter
+          fi
 
       - name: Limpieza automatica de archivos antiguos
         run: |

@@ -1,25 +1,19 @@
-# 🌦## 🚀 Características
+# 🌦️ X-WindyBot - Capturador Automático de Radar Meteorológico
 
-- ⏰ **Captura automática cada 5 minutos** mediante GitHub Actions (cron + disparo manual)
-- 🎭 **Motor Playwright** con soporte nativo para WebGL y renderizado de canvas
-- 🎨 **Capturas de alta calidad** (650-800 KB) con preserveDrawingBuffer y canvas.toDataURL()
-- 🖥️ **Aplicación local en Express** para disparar capturas desde `localhost` con un clic
-- 📁 **Almacenamiento automático** en `captures/` con limpieza de históricos (últimas 100 capturas)
-- 🔄 **Auto-commit & push** de resultados y metadatos generados en las ejecuciones
-- 🚀 **Instalación simplificada** sin necesidad de drivers externos ni configuraciones complejas
-- 📊 **Logging detallado** (tiempos, estados de canvas, validaciones) para depuración rápidaBot - Capturador Automático de Radar Meteorológico
-
-Una herramienta de automatización que utiliza GitHub Actions para capturar screenshots del radar meteorológico de Windy.com cada 5 minutos y almacenarlos automáticamente en el repositorio.
+Una herramienta de automatización que utiliza GitHub Actions para capturar screenshots del radar meteorológico de Windy.com y publicarlos automáticamente en Twitter/X.
 
 ## 🚀 Características
 
-- ⏰ **Captura automática cada 5 minutos** mediante GitHub Actions (cron + disparo manual)
-- 🤖 **Motor principal en Selenium WebDriver** con esperas inteligentes adaptadas a Windy.com
-- �️ **Triple fallback**: Selenium → script híbrido bash → Chrome headless directo
-- �️ **Aplicación local en Express** para disparar capturas desde `localhost` con un clic
+- ⏰ **Captura automática cada 5-10 minutos** mediante GitHub Actions (cron + disparo manual)
+- 🎭 **Motor Playwright** con soporte nativo para WebGL y renderizado de canvas
+- 🎨 **Capturas de alta calidad** (50-800 KB) con preserveDrawingBuffer y canvas.toDataURL()
+- 🐦 **Publicación automática en Twitter/X** con imagen adjunta y coordenadas
+- 📍 **Coordenadas configurables** mediante Variables de Repositorio
+- 🖥️ **Aplicación local en Express** para disparar capturas desde `localhost` con un clic
 - 📁 **Almacenamiento automático** en `captures/` con limpieza de históricos (últimas 100 capturas)
-- 🔄 **Auto-commit & push** de resultados y metadatos generados en las ejecuciones
-- 📊 **Logging detallado** (tiempos, versiones, validaciones) para depuración rápida
+- 🔄 **Auto-commit & push** de capturas versionadas en el repositorio
+- 🚀 **Instalación simplificada** sin necesidad de drivers externos ni configuraciones complejas
+- 📊 **Logging detallado** (tiempos, estados de canvas, validaciones) para depuración rápida
 
 ## 📂 Estructura del Proyecto
 
@@ -27,15 +21,18 @@ Una herramienta de automatización que utiliza GitHub Actions para capturar scre
 X-WindyBot/
 ├── .github/
 │   └── workflows/
-│       └── capture-ultra-fast.yml   # Workflow con Playwright
+│       └── capture-ultra-fast.yml   # Workflow con Playwright + Twitter
 ├── server/
 │   └── local-server.js              # Servidor Express para el modo localhost
 ├── scripts/
 │   ├── capture-playwright.js        # Motor Playwright con soporte WebGL
+│   ├── publish-to-twitter.js        # Publicación automática en Twitter/X
 │   └── capture-selenium.js          # Motor Selenium (legacy, backup)
 ├── captures/                        # Carpeta donde se guardan las capturas
 │   └── .gitkeep                     # Mantiene la carpeta en Git
 ├── package.json                     # Dependencias y scripts de NPM
+├── TWITTER_SETUP.md                 # Guía de configuración de Twitter API
+├── CONFIGURACION.md                 # Guía de coordenadas y personalización
 └── README.md                        # Esta documentación
 ```
 
@@ -168,7 +165,54 @@ radar_YYYY-MM-DD_HH-MM-SS.png
 
 Ejemplo: `radar_2025-09-28_14-30-25.png`
 
-## 🔧 Personalización Avanzada
+## � Publicación Automática en Twitter/X
+
+X-WindyBot puede publicar automáticamente las capturas del radar en Twitter/X. 
+
+### Configurar Twitter (Opcional)
+
+Si quieres habilitar la publicación en Twitter:
+
+1. **Sigue la guía completa**: Lee [`TWITTER_SETUP.md`](TWITTER_SETUP.md) con instrucciones paso a paso
+2. **Obtén credenciales**: Crea una app en [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)
+3. **Configura Secrets** en GitHub:
+   - `TWITTER_API_KEY`
+   - `TWITTER_API_SECRET`
+   - `TWITTER_ACCESS_TOKEN`
+   - `TWITTER_ACCESS_SECRET`
+
+Una vez configurado, cada captura se publicará automáticamente con un tweet como:
+
+```
+🌧️ Radar meteorológico actualizado
+
+📅 07/10/2025 - 14:30
+📍 Lat 39.418, Lon -5.160
+
+🔗 Ver en vivo: https://www.windy.com/?radar,39.418,-5.160,6
+
+#Meteorología #Radar #Tiempo
+```
+
+### Personalizar el Mensaje del Tweet
+
+Puedes personalizar el mensaje configurando la Variable de Repositorio:
+
+- `TWITTER_CUSTOM_MESSAGE`: Tu mensaje personalizado
+- `TWITTER_INCLUDE_LINK`: `true` o `false` (incluir enlace a Windy)
+
+### Probar Publicación Localmente
+
+```bash
+# Windows PowerShell
+$env:TWITTER_API_KEY="tu_key"; $env:TWITTER_API_SECRET="tu_secret"
+$env:TWITTER_ACCESS_TOKEN="tu_token"; $env:TWITTER_ACCESS_SECRET="tu_secret"
+npm run publish:twitter
+```
+
+**Nota:** Si no configuras los secrets de Twitter, el workflow funcionará normalmente pero saltará la publicación.
+
+## �🔧 Personalización Avanzada
 
 ### Modificar Configuraciones de Captura
 
