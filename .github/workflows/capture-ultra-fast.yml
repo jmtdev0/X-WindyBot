@@ -61,63 +61,53 @@ jobs:
           echo "Resultados:"
           ls -lh captures/*.png 2>/dev/null || echo "⚠️ No se encontraron capturas PNG"
 
-      - name: Subir capturas como artefactos
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: capturas-radar-${{ github.run_number }}
-          path: captures/*.png
-          retention-days: 30
-          if-no-files-found: warn
-
-      - name: Verificar estado del repositorio
+      - name: Verificar capturas generadas
         id: check
         run: |
-          echo "Verificando estado del repositorio..."
+          echo "Verificando capturas generadas..."
           
-          FILE_COUNT=$(find captures -name "*.png" 2>/dev/null | wc -l)
+          FILE_COUNT=$(find captures -name "radar_*.png" 2>/dev/null | wc -l)
           echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
-          echo "Total de capturas: $FILE_COUNT"
+          echo "📊 Total de capturas en el repositorio: $FILE_COUNT"
           
-          if git diff --quiet && git diff --staged --quiet; then
-            echo "No hay cambios para commitear"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
-            echo "Se detectaron cambios"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            
-            echo "Estado de Git:"
-            git status --porcelain
-          fi
+          echo ""
+          echo "📁 Capturas recientes:"
+          ls -lht captures/*.png 2>/dev/null | head -5 || echo "Sin archivos"
 
       - name: Limpieza automatica de archivos antiguos
-        if: steps.check.outputs.has_changes == 'true'
         run: |
           cd captures
-          FILE_COUNT=$(find . -name "radar_*.png" | wc -l)
+          FILE_COUNT=$(find . -name "radar_*.png" 2>/dev/null | wc -l)
           
           if [ "$FILE_COUNT" -gt 100 ]; then
-            echo "Eliminando archivos antiguos (manteniendo ultimos 100)..."
+            echo "🗑️ Eliminando archivos antiguos (manteniendo ultimos 100)..."
             find . -name "radar_*.png" -printf '%T@ %p\n' | sort -n | head -n -100 | cut -d' ' -f2- | xargs rm -f
             NEW_COUNT=$(find . -name "radar_*.png" | wc -l)
-            echo "Limpieza completada. Archivos restantes: $NEW_COUNT"
+            echo "✅ Limpieza completada. Archivos restantes: $NEW_COUNT"
           else
-            echo "No necesita limpieza (solo $FILE_COUNT archivos)"
+            echo "✅ No necesita limpieza (solo $FILE_COUNT archivos)"
           fi
 
-      - name: Configurar Git y hacer commit
-        if: steps.check.outputs.has_changes == 'true'
+      - name: Commit y push de capturas
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action - Playwright WebGL"
           
+          # Añadir todas las capturas (nuevas y eliminadas)
           git add captures/
           
-          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          FINAL_COUNT=$(find captures -name "radar_*.png" | wc -l)
-          git commit -m "Captura radar Playwright - $TIMESTAMP (Total: $FINAL_COUNT capturas)"
-          
-          git push
+          # Verificar si hay cambios
+          if git diff --staged --quiet; then
+            echo "ℹ️ No hay cambios para commitear"
+          else
+            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+            FINAL_COUNT=$(find captures -name "radar_*.png" | wc -l)
+            
+            git commit -m "📸 Captura radar Playwright - $TIMESTAMP (Total: $FINAL_COUNT capturas)"
+            git push
+            
+            echo "✅ Cambios commiteados y pusheados exitosamente"
+          fi
 
       - name: Resumen de ejecucion
         run: |
@@ -125,30 +115,26 @@ jobs:
           echo "🕐 Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
           echo "🎯 Trigger: workflow_dispatch"
           echo "🚀 Motor: Playwright Chromium + WebGL"
-          
-          if [ "${{ steps.check.outputs.has_changes }}" == "true" ]; then
-            echo "✅ Estado: Captura exitosa y cambios commiteados"
-            echo "📊 Total de capturas: ${{ steps.check.outputs.file_count }}"
-          else
-            echo "ℹ️ Estado: Ejecucion completada, sin cambios"
-          fi
+          echo "✅ Estado: Captura completada"
+          echo "📊 Total de capturas en repo: ${{ steps.check.outputs.file_count }}"
           
           echo ""
-          echo "📁 Capturas recientes:"
-          ls -lh captures/*.png 2>/dev/null | tail -3 || echo "Sin archivos"
+          echo "📁 Última captura:"
+          ls -lht captures/radar_*.png 2>/dev/null | head -1 || echo "Sin archivos"
           
           echo ""
-          echo "📊 Tamaño total:"
+          echo "📊 Tamaño total de capturas:"
           du -sh captures/ || echo "0B"
           
           echo ""
           echo "🎉 VENTAJAS DE PLAYWRIGHT:"
           echo "  ✅ Soporte WebGL nativo en modo headless"
           echo "  ✅ Capturas de canvas con preserveDrawingBuffer"
-          echo "  ✅ Método canvas.toDataURL() directo"
+          echo "  ✅ Método canvas.toDataURL() directo con flush/finish"
           echo "  ✅ SwiftShader para renderizado por software"
-          echo "  ✅ Capturas 650-800 KB (vs 8 KB con Selenium)"
+          echo "  ✅ Capturas de alta calidad (50-800 KB)"
           echo "  ✅ Sin necesidad de drivers externos"
           echo "  ✅ Instalación simplificada y más rápida"
-          echo "  ✅ Mejor manejo de aplicaciones JavaScript modernas"
+          echo "  ✅ Commits automáticos al repositorio"
+
 

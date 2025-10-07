@@ -1,22 +1,0 @@
-CAPTURA DE EMERGENCIA - 2025-09-28_21-36-39
-URL: https://www.windy.com/?radar,39.853,-3.807,7
-Todos los métodos de captura fallaron
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0  8892    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
-HTTP/2 200 
-server: nginx/1.22.1
-content-length: 8892
-x-windy-backend: client-index
-content-security-policy: frame-ancestors 'self' *.windy.com:*
-accept-ranges: bytes
-via: 1.1 google
-date: Sun, 28 Sep 2025 21:36:39 GMT
-cache-control: max-age=0
-last-modified: Mon, 15 Sep 2025 13:09:10 GMT
-etag: "68c80ff6-22bc"
-content-type: text/html
-vary: Accept-Encoding
-age: 0
-alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
-

@@ -40,9 +40,9 @@ coverage/
 temp/
 tmp/
 
-# No ignorar la carpeta captures (queremos versionar los screenshots)
-# captures/ 
+# Capturas guardadas en el repositorio (versionadas automáticamente por GitHub Actions)
+# Las capturas NO están ignoradas - se commitean automáticamente
+# captures/
 
 # Archivos de prueba locales
 test-screenshot.png
-captures/
