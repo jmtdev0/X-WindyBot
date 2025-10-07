@@ -95,23 +95,40 @@ El comando `npm run start:local` levanta una micro-aplicación en Express que re
 
 El workflow está configurado para ejecutarse automáticamente. No necesitas configuración adicional, pero puedes personalizar:
 
-#### Modificar la URL de Windy.com
+#### Configurar coordenadas del radar (Variables de Repositorio)
 
-### Modificar la URL de Windy.com
+Las coordenadas del radar se configuran mediante **Variables de Repositorio** en GitHub:
 
-Edita el archivo `scripts/capture-playwright.js` y cambia la propiedad `url` en el objeto `CONFIG`:
+1. Ve a tu repositorio en GitHub
+2. Haz clic en **Settings** → **Secrets and variables** → **Actions** → Pestaña **Variables**
+3. Añade las siguientes variables (opcionales):
+   - `RADAR_LAT`: Latitud (por defecto: `39.418`)
+   - `RADAR_LON`: Longitud (por defecto: `-5.160`)
+   - `RADAR_ZOOM`: Nivel de zoom (por defecto: `6`)
 
-```javascript
-const CONFIG = {
-    // Personaliza esta URL según tu ubicación o preferencias
-    url: 'https://www.windy.com/?radar,39.853,-3.807,7',
-    // ...
-};
+**Ejemplo de coordenadas:**
+- Madrid: Lat `40.416`, Lon `-3.703`, Zoom `7`
+- Barcelona: Lat `41.385`, Lon `2.173`, Zoom `7`
+- Valencia: Lat `39.470`, Lon `-0.377`, Zoom `7`
+- Sevilla: Lat `37.389`, Lon `-5.984`, Zoom `7`
+
+Si no configuras estas variables, el workflow usará las coordenadas por defecto de Extremadura.
+
+#### Cambiar coordenadas localmente
+
+Para pruebas locales, puedes usar variables de entorno:
+
+```bash
+# Windows PowerShell
+$env:RADAR_LAT="40.416"; $env:RADAR_LON="-3.703"; $env:RADAR_ZOOM="7"; npm run capture
+
+# Linux/Mac
+RADAR_LAT=40.416 RADAR_LON=-3.703 RADAR_ZOOM=7 npm run capture
 ```
 
 #### Cambiar la frecuencia de captura
 
-Edita el archivo `.github/workflows/capture-radar.yml` y modifica el cron schedule:
+Edita el archivo `.github/workflows/capture-ultra-fast.yml` y modifica el cron schedule:
 
 ```yaml
 schedule:

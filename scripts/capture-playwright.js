@@ -9,9 +9,14 @@ const { chromium } = require('playwright');
 const fs = require('fs').promises;
 const path = require('path');
 
+// Leer coordenadas desde variables de entorno o usar valores por defecto
+const RADAR_LAT = process.env.RADAR_LAT || '39.418';
+const RADAR_LON = process.env.RADAR_LON || '-5.160';
+const RADAR_ZOOM = process.env.RADAR_ZOOM || '6';
+
 // Configuración
 const CONFIG = {
-    url: 'https://www.windy.com/?radar,39.853,-3.807,7',
+    url: `https://www.windy.com/?radar,${RADAR_LAT},${RADAR_LON},${RADAR_ZOOM}`,
     capturesDir: './captures',
     timeout: 60000,
     waitForRadar: 30000,
@@ -331,7 +336,8 @@ async function runPlaywrightCapture(customConfig = {}) {
 
     console.log('🚀 Iniciando captura de Windy.com con Playwright');
     console.log(`⏰ Timestamp: ${capture.timestamp}`);
-    console.log(`📁 Destino: ${capture.filepath}`);
+    console.log(`� Coordenadas: Lat ${RADAR_LAT}, Lon ${RADAR_LON}, Zoom ${RADAR_ZOOM}`);
+    console.log(`�📁 Destino: ${capture.filepath}`);
     console.log('='.repeat(60));
 
     try {

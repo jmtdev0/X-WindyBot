@@ -50,10 +50,24 @@ jobs:
 
       - name: Ejecutar captura con Playwright
         timeout-minutes: 2
+        env:
+          RADAR_LAT: ${{ vars.RADAR_LAT }}
+          RADAR_LON: ${{ vars.RADAR_LON }}
+          RADAR_ZOOM: ${{ vars.RADAR_ZOOM }}
         run: |
           echo "🚀 Iniciando captura con Playwright (soporte WebGL nativo)..."
           echo "🎯 Método: Chromium + preserveDrawingBuffer + canvas.toDataURL()"
+          
+          # Usar valores por defecto si las variables no están definidas
+          RADAR_LAT=${RADAR_LAT:-39.418}
+          RADAR_LON=${RADAR_LON:--5.160}
+          RADAR_ZOOM=${RADAR_ZOOM:-6}
+          
+          echo "📍 Coordenadas: Lat $RADAR_LAT, Lon $RADAR_LON, Zoom $RADAR_ZOOM"
           echo "=" | tr '\n' '=' | head -c 60; echo
+          
+          # Exportar para que el script Node.js las lea
+          export RADAR_LAT RADAR_LON RADAR_ZOOM
           
           npm run capture
           
