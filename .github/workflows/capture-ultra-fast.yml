@@ -1,11 +1,11 @@
 name: Captura Radar con Playwright
 
 on:
-  # Ejecucion automatica temporalmente desactivada para testing
-  # schedule:
-  #   - cron: '*/5 * * * *'
+  # Ejecución automática cada 5-10 minutos (ACTIVADO)
+  schedule:
+    - cron: '*/10 * * * *'  # Cada 10 minutos
   
-  # Permite ejecucion manual desde la interfaz de GitHub
+  # Permite ejecución manual desde la interfaz de GitHub
   workflow_dispatch:
     inputs:
       cleanup_old_files:
@@ -56,12 +56,12 @@ jobs:
           RADAR_ZOOM: ${{ vars.RADAR_ZOOM }}
         run: |
           echo "🚀 Iniciando captura con Playwright (soporte WebGL nativo)..."
-          echo "🎯 Método: Chromium + preserveDrawingBuffer + canvas.toDataURL()"
+          echo "🎯 Método: Chromium + Xvfb + preserveDrawingBuffer + canvas.toDataURL()"
           
           # Usar valores por defecto si las variables no están definidas
-          RADAR_LAT=${RADAR_LAT:-39.418}
-          RADAR_LON=${RADAR_LON:--5.160}
-          RADAR_ZOOM=${RADAR_ZOOM:-6}
+          RADAR_LAT=${RADAR_LAT:-39.259}
+          RADAR_LON=${RADAR_LON:--4.684}
+          RADAR_ZOOM=${RADAR_ZOOM:-5}
           
           echo "📍 Coordenadas: Lat $RADAR_LAT, Lon $RADAR_LON, Zoom $RADAR_ZOOM"
           echo "=" | tr '\n' '=' | head -c 60; echo
@@ -69,7 +69,8 @@ jobs:
           # Exportar para que el script Node.js las lea
           export RADAR_LAT RADAR_LON RADAR_ZOOM
           
-          npm run capture
+          # Usar Xvfb para display virtual con mejor soporte OpenGL (colores correctos del radar)
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" npm run capture
           
           echo ""
           echo "Resultados:"
@@ -114,9 +115,9 @@ jobs:
           TWITTER_CUSTOM_MESSAGE: ${{ vars.TWITTER_CUSTOM_MESSAGE }}
         run: |
           # Usar valores por defecto si no están definidas
-          export RADAR_LAT=${RADAR_LAT:-39.418}
-          export RADAR_LON=${RADAR_LON:--5.160}
-          export RADAR_ZOOM=${RADAR_ZOOM:-6}
+          export RADAR_LAT=${RADAR_LAT:-39.259}
+          export RADAR_LON=${RADAR_LON:--4.684}
+          export RADAR_ZOOM=${RADAR_ZOOM:-5}
           
           echo "🐦 Publicando captura en Twitter/X..."
           
