@@ -130,38 +130,33 @@ class TwitterTestLocal {
     generateMessage(filename) {
         const now = new Date();
         
-        // Formatear fecha en español con timezone de Madrid
+        // Formatear fecha y hora en español con timezone de Madrid
         const dateStr = now.toLocaleDateString('es-ES', {
-            weekday: 'long',
+            day: '2-digit',
+            month: '2-digit',
             year: 'numeric',
-            month: 'long',
-            day: 'numeric',
             timeZone: 'Europe/Madrid'
         });
         
         const timeStr = now.toLocaleTimeString('es-ES', {
             hour: '2-digit',
             minute: '2-digit',
+            hour12: false,
             timeZone: 'Europe/Madrid'
         });
         
         // Coordenadas (usar las del env o las por defecto)
         const lat = process.env.RADAR_LAT || '39.259';
         const lon = process.env.RADAR_LON || '-4.684';
+        const zoom = process.env.RADAR_ZOOM || '5';
         
         // Construir URL de Windy
-        const windyUrl = `https://www.windy.com/?radar,${lat},${lon},6`;
+        const windyUrl = `https://www.windy.com/?radar,${lat},${lon},${zoom}`;
         
-        // Mensaje
-        const message = `🌦️ Radar meteorológico - PRUEBA LOCAL
+        // Mensaje con nuevo formato
+        const message = `En Windy.com, puedes ver en directo por dónde avanzan las lluvias. Accede pulsando en este enlace: ${windyUrl}
 
-📅 ${dateStr}
-🕐 ${timeStr} (CET)
-📍 Coordenadas: ${lat}, ${lon}
-
-🔗 ${windyUrl}
-
-#Meteorología #RadarMeteo #TiempoEspaña #WindyRadar`;
+(Esta captura ha sido tomada ${dateStr} - ${timeStr})`;
         
         return message;
     }

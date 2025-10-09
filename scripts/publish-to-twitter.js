@@ -102,18 +102,13 @@ class TwitterPublisher {
             timeZone: 'Europe/Madrid'
         });
 
-        // Mensaje base
-        let message = `🌧️ Radar meteorológico actualizado\n\n`;
-        message += `📅 ${dateStr} - ${timeStr}\n`;
-        message += `📍 Lat ${CONFIG.radarLat}, Lon ${CONFIG.radarLon}\n\n`;
-        
-        // Añadir enlace a Windy si está habilitado
-        if (CONFIG.includeLink) {
-            const windyUrl = `https://www.windy.com/?radar,${CONFIG.radarLat},${CONFIG.radarLon},${CONFIG.radarZoom}`;
-            message += `🔗 Ver en vivo: ${windyUrl}\n\n`;
-        }
-        
-        message += `#Meteorología #Radar #Tiempo`;
+        // Construir URL de Windy
+        const windyUrl = `https://www.windy.com/?radar,${CONFIG.radarLat},${CONFIG.radarLon},${CONFIG.radarZoom}`;
+
+        // Mensaje con nuevo formato
+        let message = `En Windy.com, puedes ver en directo por dónde avanzan las lluvias. `;
+        message += `Accede pulsando en este enlace: ${windyUrl}\n\n`;
+        message += `(Esta captura ha sido tomada ${dateStr} - ${timeStr})`;
 
         return message;
     }
