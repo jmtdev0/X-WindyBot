@@ -106,9 +106,10 @@ class TwitterPublisher {
         const windyUrl = `https://www.windy.com/?radar,${CONFIG.radarLat},${CONFIG.radarLon},${CONFIG.radarZoom}`;
 
         // Mensaje con nuevo formato
-        let message = `En Windy.com, puedes ver en directo por dónde avanzan las lluvias. `;
-        message += `Accede pulsando en este enlace: ${windyUrl}\n\n`;
-        message += `(Esta captura ha sido tomada el ${dateStr} a las ${timeStr})`;
+        let message = `En Windy.com, puedes ver en directo por dónde avanzan las lluvias.\n`;
+        message += `🔗 Accede pulsando en este enlace: ${windyUrl}\n\n`;
+        message += `(Esta captura ha sido tomada el ${dateStr} a las ${timeStr})\n\n`;
+        message += `#DANA #Lluvias #Tormentas #RadarMeteorológico #WeatherRadar #Meteorología #Clima`;
 
         return message;
     }
