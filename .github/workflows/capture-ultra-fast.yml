@@ -1,18 +1,9 @@
 name: Captura Radar con Playwright (Optimizado)
 
-# OPTIMIZACIONES APLICADAS:
-# ✅ Cache de node_modules (ahorro ~30-40 seg)
-# ✅ Cache de Playwright browsers (ahorro ~60-90 seg)
-# ✅ npm ci con --prefer-offline (más rápido que npm install)
-# ✅ Timeout reducido de 5min a 3min (suficiente con cache)
-# ✅ Commits simplificados sin verificaciones extra
-# ✅ Resumen minimalista
-# RESULTADO: ~30-45 segundos por ejecución (vs ~2 minutos antes)
-
 on:
-  # Ejecución automática cada 5-10 minutos (ACTIVADO)
+  # Ejecución automática cada 30 minutos (ACTIVADO)
   schedule:
-    - cron: '*/10 * * * *'  # Cada 10 minutos
+    - cron: '*/30 * * * *'  # Cada 30 minutos
   
   # Permite ejecución manual desde la interfaz de GitHub
   workflow_dispatch:
