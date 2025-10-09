@@ -108,7 +108,7 @@ class TwitterPublisher {
         // Mensaje con nuevo formato
         let message = `En Windy.com, puedes ver en directo por dónde avanzan las lluvias. `;
         message += `Accede pulsando en este enlace: ${windyUrl}\n\n`;
-        message += `(Esta captura ha sido tomada ${dateStr} - ${timeStr})`;
+        message += `(Esta captura ha sido tomada el ${dateStr} a las ${timeStr})`;
 
         return message;
     }
