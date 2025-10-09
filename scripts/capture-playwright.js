@@ -431,13 +431,13 @@ class WindyPlaywrightCapture {
             console.log('   🏙️ Añadiendo nombres de ciudades...');
             const cities = [
                 // Principales ciudades españolas (posiciones ajustadas para zoom 5)
-                { name: 'Madrid', x: 210, y: 145 },
-                { name: 'Barcelona', x: 295, y: 105 },
-                { name: 'Valencia', x: 270, y: 155 },
-                { name: 'Sevilla', x: 135, y: 210 },
-                { name: 'Bilbao', x: 215, y: 50 },
-                { name: 'Málaga', x: 145, y: 235 },
-                { name: 'Zaragoza', x: 245, y: 85 },
+                { name: 'Madrid', x: 218, y: 138 },
+                { name: 'Barcelona', x: 303, y: 98 },
+                { name: 'Valencia', x: 278, y: 148 },
+                { name: 'Sevilla', x: 155, y: 203 },
+                { name: 'Bilbao', x: 223, y: 43 },
+                { name: 'Málaga', x: 159, y: 228 },
+                { name: 'Zaragoza', x: 253, y: 78 },
                 { name: 'Lisboa', x: 75, y: 170 }
             ];
             
