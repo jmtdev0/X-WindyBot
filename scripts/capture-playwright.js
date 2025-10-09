@@ -427,6 +427,51 @@ class WindyPlaywrightCapture {
                 .png()
                 .toBuffer();
             
+            // Añadir etiquetas de ciudades (SVG)
+            console.log('   🏙️ Añadiendo nombres de ciudades...');
+            const cities = [
+                // Principales ciudades españolas (posiciones ajustadas para zoom 5)
+                { name: 'Madrid', x: 210, y: 145 },
+                { name: 'Barcelona', x: 295, y: 105 },
+                { name: 'Valencia', x: 270, y: 155 },
+                { name: 'Sevilla', x: 135, y: 210 },
+                { name: 'Bilbao', x: 215, y: 50 },
+                { name: 'Málaga', x: 145, y: 235 },
+                { name: 'Zaragoza', x: 245, y: 85 },
+                { name: 'Lisboa', x: 75, y: 170 }
+            ];
+            
+            let citiesLabels = '';
+            cities.forEach(city => {
+                citiesLabels += `
+                    <text x="${city.x}" y="${city.y}" 
+                          font-family="Arial, sans-serif" 
+                          font-size="11" 
+                          font-weight="600"
+                          fill="white" 
+                          stroke="#000000" 
+                          stroke-width="2.5"
+                          paint-order="stroke"
+                          opacity="0.95">${city.name}</text>`;
+            });
+            
+            const labelsOverlay = Buffer.from(`
+                <svg width="${metadata.width}" height="${metadata.height}">
+                    ${citiesLabels}
+                </svg>
+            `);
+            
+            // Aplicar etiquetas sobre el radar
+            const radarWithLabels = await sharp(processedRadar)
+                .composite([{
+                    input: labelsOverlay,
+                    top: 0,
+                    left: 0,
+                    blend: 'over'
+                }])
+                .png()
+                .toBuffer();
+            
             // Crear máscara de bordes redondeados (SVG)
             const roundedCornersMask = Buffer.from(`
                 <svg width="${metadata.width}" height="${metadata.height}">
@@ -437,7 +482,7 @@ class WindyPlaywrightCapture {
             
             // Aplicar máscara de bordes redondeados
             console.log('   ✂️ Aplicando bordes redondeados...');
-            const radarWithRoundedCorners = await sharp(processedRadar)
+            const radarWithRoundedCorners = await sharp(radarWithLabels)
                 .composite([{
                     input: roundedCornersMask,
                     blend: 'dest-in'
@@ -508,7 +553,7 @@ class WindyPlaywrightCapture {
             const stats = await fs.stat(this.filepath);
             console.log(`✅ Composición profesional creada (${Math.round(stats.size/1024)} KB)`);
             console.log(`   📐 Tamaño: ${finalWidth}x${finalHeight}px`);
-            console.log(`   🎨 Efectos: bordes redondeados + sombra + saturación 1.9x`);
+            console.log(`   🎨 Efectos: bordes + sombra + saturación 1.9x + etiquetas de ciudades`);
             
             return true;
         } catch (error) {
