@@ -88,16 +88,18 @@ class TwitterPublisher {
         const timestamp = filename.replace('radar_', '').replace('.png', '');
         const date = new Date();
         
-        // Formatear fecha y hora en español
+        // Formatear fecha y hora en español con timezone de Madrid (Europe/Madrid)
         const dateStr = date.toLocaleDateString('es-ES', { 
             day: '2-digit', 
             month: '2-digit', 
-            year: 'numeric' 
+            year: 'numeric',
+            timeZone: 'Europe/Madrid'
         });
         const timeStr = date.toLocaleTimeString('es-ES', { 
             hour: '2-digit', 
             minute: '2-digit',
-            hour12: false
+            hour12: false,
+            timeZone: 'Europe/Madrid'
         });
 
         // Mensaje base

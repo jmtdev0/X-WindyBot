@@ -130,12 +130,13 @@ class TwitterTestLocal {
     generateMessage(filename) {
         const now = new Date();
         
-        // Formatear fecha en español
+        // Formatear fecha en español con timezone de Madrid
         const dateStr = now.toLocaleDateString('es-ES', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
-            day: 'numeric'
+            day: 'numeric',
+            timeZone: 'Europe/Madrid'
         });
         
         const timeStr = now.toLocaleTimeString('es-ES', {
@@ -145,8 +146,8 @@ class TwitterTestLocal {
         });
         
         // Coordenadas (usar las del env o las por defecto)
-        const lat = process.env.RADAR_LAT || '39.418';
-        const lon = process.env.RADAR_LON || '-5.160';
+        const lat = process.env.RADAR_LAT || '39.259';
+        const lon = process.env.RADAR_LON || '-4.684';
         
         // Construir URL de Windy
         const windyUrl = `https://www.windy.com/?radar,${lat},${lon},6`;
