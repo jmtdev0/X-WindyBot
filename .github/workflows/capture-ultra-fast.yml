@@ -22,7 +22,7 @@ jobs:
   capture-radar-playwright:
     name: Captura Radar (Playwright + WebGL)
     runs-on: ubuntu-latest
-    timeout-minutes: 3  # Reducido de 5 a 3 min (con cache será suficiente)
+    timeout-minutes: 5  # Aumentado a 5 min para install-deps (no cacheable)
     
     outputs:
       file_count: ${{ steps.check.outputs.file_count }}
@@ -74,7 +74,7 @@ jobs:
         run: mkdir -p captures
 
       - name: Ejecutar captura con Playwright
-        timeout-minutes: 1  # Reducido de 2 a 1 min (con cache será más rápido)
+        timeout-minutes: 2  # Aumentado a 2 min (espera inteligente es más rápida)
         env:
           RADAR_LAT: ${{ vars.RADAR_LAT }}
           RADAR_LON: ${{ vars.RADAR_LON }}
