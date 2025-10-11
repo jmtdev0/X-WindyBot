@@ -58,6 +58,12 @@ class TwitterPublisher {
     async initialize() {
         console.log('🐦 Inicializando cliente de Twitter API...');
         
+        // Debug: mostrar longitud de las credenciales (sin mostrar valores)
+        console.log(`   API Key length: ${CONFIG.appKey?.length || 0}`);
+        console.log(`   API Secret length: ${CONFIG.appSecret?.length || 0}`);
+        console.log(`   Access Token length: ${CONFIG.accessToken?.length || 0}`);
+        console.log(`   Access Secret length: ${CONFIG.accessSecret?.length || 0}`);
+        
         try {
             this.client = new TwitterApi({
                 appKey: CONFIG.appKey,
@@ -74,6 +80,20 @@ class TwitterPublisher {
         } catch (error) {
             console.error('❌ Error al inicializar cliente de Twitter:');
             console.error(error.message);
+            
+            // Debug adicional para errores 401
+            if (error.code === 401 || error.statusCode === 401) {
+                console.error('\n🔍 Error 401 - Credenciales no autorizadas');
+                console.error('   Posibles causas:');
+                console.error('   - Los tokens han expirado');
+                console.error('   - Los tokens fueron revocados');
+                console.error('   - La app en Twitter fue modificada/regenerada');
+                console.error('   - OAuth 1.0a no está configurado correctamente');
+                if (error.data) {
+                    console.error('   Detalles:', JSON.stringify(error.data, null, 2));
+                }
+            }
+            
             throw error;
         }
     }
@@ -105,11 +125,11 @@ class TwitterPublisher {
         // Construir URL de Windy
         const windyUrl = `https://www.windy.com/?radar,${CONFIG.radarLat},${CONFIG.radarLon},${CONFIG.radarZoom}`;
 
-        // Mensaje con nuevo formato
-        let message = `En Windy.com, puedes ver en directo por dónde avanzan las lluvias.\n`;
-        message += `🔗 Accede pulsando en este enlace y haz zoom en el lugar en el que vives: ${windyUrl}\n\n`;
-        message += `(Esta captura ha sido tomada el ${dateStr} a las ${timeStr})\n\n`;
-        message += `#DANA #Lluvias #Tormentas #RadarMeteorológico #WeatherRadar #Meteorología #Clima`;
+        // Mensaje optimizado para no exceder 280 caracteres
+        let message = `Radar meteorológico en tiempo real 🌧️\n\n`;
+        message += `� ${windyUrl}\n\n`;
+        message += `Captura: ${dateStr} ${timeStr}\n\n`;
+        message += `#DANA #Lluvias #Tormentas #Meteorología`;
 
         return message;
     }

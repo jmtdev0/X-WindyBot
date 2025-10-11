@@ -146,17 +146,18 @@ class TwitterTestLocal {
         });
         
         // Coordenadas (usar las del env o las por defecto)
-        const lat = process.env.RADAR_LAT || '39.259';
-        const lon = process.env.RADAR_LON || '-4.684';
+        const lat = process.env.RADAR_LAT || '39.061';
+        const lon = process.env.RADAR_LON || '-4.478';
         const zoom = process.env.RADAR_ZOOM || '5';
         
         // Construir URL de Windy
         const windyUrl = `https://www.windy.com/?radar,${lat},${lon},${zoom}`;
         
-        // Mensaje con nuevo formato
-        const message = `En Windy.com, puedes ver en directo por dónde avanzan las lluvias. Accede pulsando en este enlace: ${windyUrl}
-
-(Esta captura ha sido tomada ${dateStr} - ${timeStr})`;
+        // Mensaje optimizado para no exceder 280 caracteres
+        let message = `Radar meteorológico en tiempo real 🌧️\n\n`;
+        message += `📍 ${windyUrl}\n\n`;
+        message += `Captura: ${dateStr} ${timeStr}\n\n`;
+        message += `#DANA #Lluvias #Tormentas #Meteorología`;
         
         return message;
     }
