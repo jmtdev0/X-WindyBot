@@ -129,10 +129,10 @@ jobs:
       - name: Publicar en Twitter/X
         if: steps.check.outputs.capture_valid == 'true'
         env:
-          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
-          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
-          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+          TWITTER_API_KEY: tFTg3gSAjQjBAfk1woi2myLm3
+          TWITTER_API_SECRET: r82dhQXUxhnOq9CbBbQ4IfRJ1D5RwoPbBx0MDf0SNjtV7J02BK
+          TWITTER_ACCESS_TOKEN: 1975621527157559296-ADarfQDDD9PZGBQp7j6okEFUmJSmhM
+          TWITTER_ACCESS_SECRET: zyj0KGxvsE8vJmeBbBQER7yrz3D8wbnbdh1c643h8S86Z
           RADAR_LAT: ${{ vars.RADAR_LAT }}
           RADAR_LON: ${{ vars.RADAR_LON }}
           RADAR_ZOOM: ${{ vars.RADAR_ZOOM }}
