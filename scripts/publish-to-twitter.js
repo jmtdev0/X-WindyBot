@@ -158,6 +158,20 @@ class TwitterPublisher {
         } catch (error) {
             console.error('❌ Error al publicar tweet:');
             console.error(error.message);
+            
+            // Debug adicional para errores 403
+            if (error.code === 403 || error.statusCode === 403) {
+                console.error('\n🔍 Información adicional del error 403:');
+                console.error('   Este error suele indicar un problema de permisos de la app en Twitter.');
+                console.error('   Posibles causas:');
+                console.error('   - La app no tiene permisos de "Read and Write"');
+                console.error('   - Los tokens necesitan regenerarse desde el portal de desarrolladores');
+                console.error('   - La app está en modo "Restricted" en lugar de "Production"');
+                if (error.data) {
+                    console.error('   Detalles del error:', JSON.stringify(error.data, null, 2));
+                }
+            }
+            
             throw error;
         }
     }

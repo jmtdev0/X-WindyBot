@@ -115,9 +115,64 @@ class WindyPlaywrightCapture {
             console.log('⚠️ No se detectó contenedor del mapa');
         }
 
-        // Espera generosa para que se renderice todo
-        console.log(`⏳ Esperando ${this.config.waitForRadar / 1000}s adicionales para renderizado completo...`);
-        await this.page.waitForTimeout(this.config.waitForRadar);
+        // Espera inteligente: verificar que el canvas tenga contenido renderizado
+        console.log('⏳ Esperando a que el radar se renderice completamente...');
+        
+        const maxAttempts = 30; // máximo 30 intentos = 15 segundos
+        let canvasReady = false;
+        
+        for (let i = 0; i < maxAttempts; i++) {
+            const hasContent = await this.page.evaluate(() => {
+                const canvas = document.querySelector('canvas');
+                if (!canvas) return false;
+                
+                try {
+                    // Verificar si el canvas tiene contenido dibujado
+                    const gl = canvas.getContext('webgl') || canvas.getContext('webgl2') || canvas.getContext('experimental-webgl');
+                    if (!gl) return false;
+                    
+                    // Verificar que el canvas no esté completamente vacío
+                    const ctx2d = document.createElement('canvas').getContext('2d');
+                    ctx2d.canvas.width = canvas.width;
+                    ctx2d.canvas.height = canvas.height;
+                    ctx2d.drawImage(canvas, 0, 0);
+                    
+                    const imageData = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    
+                    // Verificar que no todos los píxeles sean transparentes o del mismo color
+                    let nonEmptyPixels = 0;
+                    for (let i = 0; i < data.length; i += 4) {
+                        // Si el píxel no es completamente transparente y no es negro puro
+                        if (data[i + 3] > 0 && (data[i] > 10 || data[i + 1] > 10 || data[i + 2] > 10)) {
+                            nonEmptyPixels++;
+                            if (nonEmptyPixels > 100) return true; // Suficiente contenido
+                        }
+                    }
+                    
+                    return false;
+                } catch (e) {
+                    return false;
+                }
+            });
+            
+            if (hasContent) {
+                canvasReady = true;
+                console.log(`✅ Radar renderizado (verificado en ${(i + 1) * 0.5}s)`);
+                break;
+            }
+            
+            await this.page.waitForTimeout(500); // Esperar 0.5s entre intentos
+        }
+        
+        if (!canvasReady) {
+            console.log('⚠️ Timeout esperando renderizado, continuando de todas formas...');
+            // Espera de seguridad mínima
+            await this.page.waitForTimeout(3000);
+        } else {
+            // Pequeña espera adicional para asegurar estabilidad
+            await this.page.waitForTimeout(2000);
+        }
 
         // Intentar forzar el canvas al tamaño del viewport
         console.log('📐 Intentando redimensionar canvas al tamaño del viewport...');
