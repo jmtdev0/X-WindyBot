@@ -154,8 +154,7 @@ class TwitterTestLocal {
         const windyUrl = `https://www.windy.com/?radar,${lat},${lon},${zoom}`;
         
         // Mensaje optimizado para no exceder 280 caracteres
-        let message = `Radar meteorológico en tiempo real 🌧️\n\n`;
-        message += `📍 ${windyUrl}\n\n`;
+        let message = `En Windy, puedes ver en directo por dónde avanzan las lluvias. Accede pulsando en este enlace y haz zoom en el lugar en el que vives: ${windyUrl}\n\n`;
         message += `Captura: ${dateStr} ${timeStr}\n\n`;
         message += `#DANA #Lluvias #Tormentas #Meteorología`;
         
