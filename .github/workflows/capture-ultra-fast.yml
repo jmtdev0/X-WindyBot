@@ -3,7 +3,7 @@ name: Captura Radar con Playwright (Optimizado)
 on:
   # Ejecución automática cada 30 minutos (ACTIVADO)
   schedule:
-    - cron: '*/30 * * * *'  # Cada 30 minutos
+    - cron: '*/45 * * * *'  # Cada 30 minutos
   
   # Permite ejecución manual desde la interfaz de GitHub
   workflow_dispatch:
