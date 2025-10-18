@@ -8,11 +8,43 @@
 const { TwitterApi } = require('twitter-api-v2');
 const fs = require('fs').promises;
 const path = require('path');
+const { spawn } = require('child_process');
 
 class TwitterTestLocal {
     constructor() {
         this.credentials = null;
         this.client = null;
+    }
+
+    /**
+     * Ejecuta la tarea de captura local (npm run capture) y espera a que termine
+     * Solo para uso local/ pruebas
+     */
+    async runCapture() {
+        console.log('\n🚧 Generando nueva captura con `npm run capture` (local)...');
+
+        return new Promise((resolve, reject) => {
+            const cmd = process.platform === 'win32' ? 'npm' : 'npm';
+            const args = ['run', 'capture'];
+
+            const child = spawn(cmd, args, { shell: true, stdio: 'inherit' });
+
+            child.on('error', (err) => {
+                console.error('❌ Error iniciando proceso de captura:', err.message);
+                reject(err);
+            });
+
+            child.on('exit', (code) => {
+                if (code === 0) {
+                    console.log('✅ Captura generada correctamente');
+                    resolve();
+                } else {
+                    const err = new Error(`El proceso de captura finalizó con código ${code}`);
+                    console.error('❌', err.message);
+                    reject(err);
+                }
+            });
+        });
     }
 
     /**
@@ -215,6 +247,58 @@ class TwitterTestLocal {
     }
 
     /**
+     * Publica un tweet en respuesta a otro tweet (solo para uso local)
+     * @param {string|number} replyToId - ID del tweet al que responder
+     * @param {boolean} post - Si true, realiza la subida y publicación; si false, dry-run
+     */
+    async replyToTweet(replyToId, post = false) {
+        console.log(`\n🔁 Preparando tweet en respuesta a ID: ${replyToId}`);
+
+        // Generar una captura nueva en local (npm run capture)
+        await this.runCapture();
+
+        // Encontrar la última captura y generar el mensaje
+        const imagePath = await this.findLatestCapture();
+        const message = this.generateMessage(path.basename(imagePath));
+
+        console.log('\n📝 Mensaje (respuesta):');
+        console.log('─'.repeat(60));
+        console.log(message);
+        console.log('─'.repeat(60));
+
+        if (!post) {
+            console.log('\nℹ️ Modo dry-run: no se subirá ni publicará el tweet. Usa --post para publicar.');
+            return { dryRun: true, message, imagePath };
+        }
+
+        console.log('\n⚠️  Se publicará un tweet REAL en respuesta. Presiona Ctrl+C en los próximos 5 segundos para cancelar...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        // Subir la imagen y publicar el tweet como respuesta
+        const mediaId = await this.uploadMedia(imagePath);
+
+        try {
+            const tweet = await this.client.v2.tweet({
+                text: message,
+                media: { media_ids: [mediaId] },
+                reply: { in_reply_to_tweet_id: String(replyToId) }
+            });
+
+            console.log('✅ Reply publicado correctamente');
+            console.log(`   Tweet ID: ${tweet.data.id}`);
+            console.log(`   URL: https://twitter.com/i/web/status/${tweet.data.id}`);
+
+            return tweet.data;
+        } catch (error) {
+            console.error('❌ Error publicando reply:', error.message);
+            if (error.data) {
+                console.error('   Detalles:', JSON.stringify(error.data, null, 2));
+            }
+            throw error;
+        }
+    }
+
+    /**
      * Ejecuta el flujo completo de prueba
      */
     async run() {
@@ -228,7 +312,8 @@ class TwitterTestLocal {
             // 2. Inicializar cliente de Twitter
             const userInfo = await this.initialize();
             
-            // 3. Encontrar última captura
+            // 3. Generar una captura nueva y encontrarla
+            await this.runCapture();
             const imagePath = await this.findLatestCapture();
             
             // 4. Generar mensaje
@@ -297,7 +382,36 @@ if (require.main === module) {
         process.exit(1);
     });
     
-    main();
+    // Manejo simple de argumentos CLI: --reply-to <ID> [--post]
+    const argv = require('minimist')(process.argv.slice(2));
+
+    (async () => {
+        const tester = new TwitterTestLocal();
+
+        // Soporte para reply-to
+        if (argv['reply-to'] || argv.r) {
+            const replyId = argv['reply-to'] || argv.r;
+            const doPost = argv.post || false;
+
+            try {
+                await tester.loadCredentials();
+                await tester.initialize();
+                const res = await tester.replyToTweet(replyId, Boolean(doPost));
+                if (res && res.id) {
+                    console.log(`\n✅ Reply publicado: https://twitter.com/i/web/status/${res.id}`);
+                    process.exit(0);
+                }
+                process.exit(0);
+            } catch (err) {
+                console.error('❌ Error al ejecutar reply-to:', err.message);
+                process.exit(1);
+            }
+        }
+
+        // Si no hay reply-to, ejecutar el flujo normal
+        const result = await main();
+        process.exit(result.success ? 0 : 1);
+    })();
 }
 
 module.exports = { TwitterTestLocal };
