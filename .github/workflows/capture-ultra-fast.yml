@@ -1,7 +1,7 @@
 name: Captura Radar con Playwright (Optimizado)
 
 on:
-  # Ejecución automática cada 30 minutos (ACTIVADO)
+  # Ejecución automática (ejecución corta + early-exit controlable por variable)
   schedule:
     # Ejecutamos cada 5 minutos pero el workflow hará un early-exit
     # si no coincide con el intervalo configurado en la variable del repo
