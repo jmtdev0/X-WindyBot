@@ -4,7 +4,7 @@ on:
   # Ejecución automática cada 6 horas
   schedule:
     # Se ejecuta a minuto 0 cada 6 horas (0:00, 6:00, 12:00, 18:00)
-    - cron: '0 */6 * * *'
+    - cron: '0 */1 * * *'
   
   # Permite ejecución manual desde la interfaz de GitHub
   workflow_dispatch:
