@@ -14,6 +14,7 @@ class TwitterTestLocal {
     constructor() {
         this.credentials = null;
         this.client = null;
+        this._pendingAltText = null;
     }
 
     /**
@@ -194,6 +195,16 @@ class TwitterTestLocal {
     }
 
     /**
+     * Genera un texto alternativo (alt text) para la imagen
+     * El texto invita al lector a abrir Windy para ver el avance de las lluvias en tiempo real
+     */
+    generateAltText(filename) {
+        // Texto conciso y accesible
+        const alt = `Mapa de radar (${filename}) que muestra la situación de precipitaciones. Abre Windy (https://www.windy.com/?radar) para ver en tiempo real cómo avanzan las lluvias y hacer zoom en tu localidad.`;
+        return alt;
+    }
+
+    /**
      * Sube la imagen a Twitter
      */
     async uploadMedia(imagePath) {
@@ -202,10 +213,25 @@ class TwitterTestLocal {
         
         try {
             const mediaId = await this.client.v1.uploadMedia(imagePath);
-            
+
             console.log('✅ Imagen subida correctamente');
             console.log(`   Media ID: ${mediaId}`);
-            
+
+            // Intentar añadir alt text si el cliente lo soporta y se ha generado uno
+            try {
+                if (this._pendingAltText) {
+                    const altText = this._pendingAltText;
+                    // createMediaMetadata es el método para añadir metadata en v1
+                    await this.client.v1.createMediaMetadata(mediaId, { alt_text: { text: altText } });
+                    console.log('✅ Alt text añadido a la imagen');
+                }
+            } catch (metaErr) {
+                console.warn('⚠️ No se pudo añadir alt text:', metaErr?.message || metaErr);
+            }
+
+            // Limpiar alt text pendiente
+            this._pendingAltText = null;
+
             return mediaId;
             
         } catch (error) {
@@ -247,19 +273,87 @@ class TwitterTestLocal {
     }
 
     /**
+     * Comprueba si se puede responder al tweet indicado
+     * Devuelve { ok: true } o { ok: false, reason: '...', details }
+     */
+    async canReplyToTweet(tweetId) {
+        if (!this.client) {
+            throw new Error('Cliente no inicializado. Llama a initialize() primero');
+        }
+
+        try {
+            const res = await this.client.v2.singleTweet(tweetId, {
+                'tweet.fields': 'reply_settings,author_id',
+                expansions: 'author_id',
+                'user.fields': 'protected,username'
+            });
+
+            if (!res || !res.data) {
+                return { ok: false, reason: 'not_found' };
+            }
+
+            const replySettings = res.data.reply_settings || 'everyone';
+            const author = res.includes?.users?.[0];
+
+            if (author && author.protected) {
+                return { ok: false, reason: 'author_protected', details: { author } };
+            }
+
+            if (replySettings !== 'everyone') {
+                return { ok: false, reason: 'reply_settings', details: { replySettings } };
+            }
+
+            return { ok: true };
+        } catch (err) {
+            // Propagar información útil
+            const details = err?.data || err?.message || err;
+            return { ok: false, reason: 'api_error', details };
+        }
+    }
+
+    /**
      * Publica un tweet en respuesta a otro tweet (solo para uso local)
      * @param {string|number} replyToId - ID del tweet al que responder
      * @param {boolean} post - Si true, realiza la subida y publicación; si false, dry-run
      */
-    async replyToTweet(replyToId, post = false) {
+    async replyToTweet(replyToId, options = {}) {
+        const { post = false, customText = null } = options;
         console.log(`\n🔁 Preparando tweet en respuesta a ID: ${replyToId}`);
 
-        // Generar una captura nueva en local (npm run capture)
-        await this.runCapture();
+        // Si estamos en modo post, omitir pre-check para evitar rate limits
+        // La API de Twitter validará al publicar
+        if (post) {
+            console.log('ℹ️  Omitiendo pre-check (modo publicación directa)');
+        } else {
+            // En modo dry-run, verificar que podemos responder a ese tweet
+            const check = await this.canReplyToTweet(replyToId);
+            if (!check.ok) {
+                console.error('\n❌ Imposible responder al tweet objetivo:', check.reason);
+                if (check.details) console.error('   Detalles:', JSON.stringify(check.details, null, 2));
+                return { success: false, error: `Cannot reply: ${check.reason}`, details: check.details };
+            }
+        }
 
-        // Encontrar la última captura y generar el mensaje
-        const imagePath = await this.findLatestCapture();
-        const message = this.generateMessage(path.basename(imagePath));
+        let imagePath = null;
+        let message = customText || '';
+        let altText = null;
+
+        if (customText) {
+            message = customText.trim();
+            if (!message) {
+                throw new Error('El texto personalizado para la respuesta está vacío');
+            }
+        } else {
+            // Generar una captura nueva en local (npm run capture)
+            await this.runCapture();
+
+            // Encontrar la última captura y generar el mensaje + alt text
+            imagePath = await this.findLatestCapture();
+            const imageName = path.basename(imagePath);
+            message = this.generateMessage(imageName);
+            altText = this.generateAltText(imageName);
+            this._pendingAltText = altText;
+        }
 
         console.log('\n📝 Mensaje (respuesta):');
         console.log('─'.repeat(60));
@@ -268,16 +362,29 @@ class TwitterTestLocal {
 
         if (!post) {
             console.log('\nℹ️ Modo dry-run: no se subirá ni publicará el tweet. Usa --post para publicar.');
-            return { dryRun: true, message, imagePath };
+            return { dryRun: true, message, imagePath, altText, customText: Boolean(customText) };
         }
 
         console.log('\n⚠️  Se publicará un tweet REAL en respuesta. Presiona Ctrl+C en los próximos 5 segundos para cancelar...');
         await new Promise(resolve => setTimeout(resolve, 5000));
 
-        // Subir la imagen y publicar el tweet como respuesta
-        const mediaId = await this.uploadMedia(imagePath);
-
         try {
+            if (customText) {
+                const tweet = await this.client.v2.tweet({
+                    text: message,
+                    reply: { in_reply_to_tweet_id: String(replyToId) }
+                });
+
+                console.log('✅ Reply de texto publicado correctamente');
+                console.log(`   Tweet ID: ${tweet.data.id}`);
+                console.log(`   URL: https://twitter.com/i/web/status/${tweet.data.id}`);
+
+                return tweet.data;
+            }
+
+            // Subir la imagen y publicar el tweet como respuesta
+            const mediaId = await this.uploadMedia(imagePath);
+
             const tweet = await this.client.v2.tweet({
                 text: message,
                 media: { media_ids: [mediaId] },
@@ -315,13 +422,17 @@ class TwitterTestLocal {
             // 3. Generar una captura nueva y encontrarla
             await this.runCapture();
             const imagePath = await this.findLatestCapture();
+            const imageName = path.basename(imagePath);
             
-            // 4. Generar mensaje
-            const message = this.generateMessage(path.basename(imagePath));
+            // 4. Generar mensaje y alt text
+            const message = this.generateMessage(imageName);
+            const altText = this.generateAltText(imageName);
+            this._pendingAltText = altText;
             console.log('\n📝 Mensaje del tweet:');
             console.log('─'.repeat(60));
             console.log(message);
             console.log('─'.repeat(60));
+            console.log('Alt text:', altText);
             
             // 5. Confirmar con el usuario
             console.log('\n⚠️  ¿CONTINUAR CON LA PUBLICACIÓN?');
@@ -383,20 +494,95 @@ if (require.main === module) {
     });
     
     // Manejo simple de argumentos CLI: --reply-to <ID> [--post]
-    const argv = require('minimist')(process.argv.slice(2));
+    const argv = require('minimist')(process.argv.slice(2), {
+        string: ['reply-to', 'r', 'text', 'message']
+    });
+    const rawCustomText = typeof argv.text === 'string' ? argv.text : (typeof argv.message === 'string' ? argv.message : null);
+    const customText = rawCustomText ? rawCustomText.trim() : null;
 
     (async () => {
         const tester = new TwitterTestLocal();
 
-        // Soporte para reply-to
-        if (argv['reply-to'] || argv.r) {
-            const replyId = argv['reply-to'] || argv.r;
-            const doPost = argv.post || false;
+        // Soporte para generate-only sin reply-to
+            const genOnly = argv['generate-only'] || argv.gen || false;
+
+            if (genOnly && !(argv['reply-to'] || argv.r)) {
+                try {
+                    await tester.runCapture();
+                    const imagePath = await tester.findLatestCapture();
+                    const imageName = path.basename(imagePath);
+                    const message = customText || tester.generateMessage(imageName);
+                    const altText = tester.generateAltText(imageName);
+
+                    console.log('\n--- TWEET CONTENT ---');
+                    console.log(message);
+                    console.log('--- IMAGE PATH ---');
+                    console.log(imagePath);
+                    console.log('--- ALT TEXT ---');
+                    console.log(altText);
+                    console.log('\n--- SUMMARY (JSON) ---');
+                    console.log(JSON.stringify({ tweet: message, imagePath, altText, canReply: null }, null, 2));
+
+                    process.exit(0);
+                } catch (err) {
+                    console.error('❌ Error generando contenido:', err.message || err);
+                    process.exit(1);
+                }
+            }
+
+            // Soporte para reply-to
+            if (argv['reply-to'] || argv.r) {
+                const replyIdRaw = argv['reply-to'] || argv.r;
+                const replyId = replyIdRaw ? String(replyIdRaw).trim() : null;
+                const doPost = argv.post || false;
+                if (!replyId) {
+                    console.error('❌ Debes proporcionar un ID válido con --reply-to');
+                    process.exit(1);
+                }
 
             try {
                 await tester.loadCredentials();
                 await tester.initialize();
-                const res = await tester.replyToTweet(replyId, Boolean(doPost));
+
+                if (genOnly) {
+                    // Generate capture + message but do not upload/post
+                    const check = await tester.canReplyToTweet(replyId);
+                    if (!check.ok) {
+                        console.error('\n⚠️ Pre-check: no se puede responder a ese tuit:', check.reason);
+                        if (check.details) console.error('   Detalles:', JSON.stringify(check.details, null, 2));
+                    }
+
+                    if (customText) {
+                        const message = customText;
+                        console.log('\n--- TWEET CONTENT (CUSTOM) ---');
+                        console.log(message);
+                        console.log('\n--- SUMMARY (JSON) ---');
+                        console.log(JSON.stringify({ tweet: message, imagePath: null, altText: null, canReply: check, customText: true }, null, 2));
+
+                        process.exit(0);
+                    }
+
+                    // Generate capture and message
+                    await tester.runCapture();
+                    const imagePath = await tester.findLatestCapture();
+                    const imageName = path.basename(imagePath);
+                    const message = tester.generateMessage(imageName);
+                    const altText = tester.generateAltText(imageName);
+
+                    // Output in plain text and JSON summary
+                    console.log('\n--- TWEET CONTENT ---');
+                    console.log(message);
+                    console.log('--- IMAGE PATH ---');
+                    console.log(imagePath);
+                    console.log('--- ALT TEXT ---');
+                    console.log(altText);
+                    console.log('\n--- SUMMARY (JSON) ---');
+                    console.log(JSON.stringify({ tweet: message, imagePath, altText, canReply: check, customText: false }, null, 2));
+
+                    process.exit(0);
+                }
+
+                const res = await tester.replyToTweet(replyId, { post: Boolean(doPost), customText });
                 if (res && res.id) {
                     console.log(`\n✅ Reply publicado: https://twitter.com/i/web/status/${res.id}`);
                     process.exit(0);

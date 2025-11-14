@@ -48,3 +48,4 @@ tmp/
 test-screenshot.png
 secrets.txt
 scripts/debug-secrets.js
+captures

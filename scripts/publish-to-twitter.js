@@ -133,19 +133,39 @@ class TwitterPublisher {
         return message;
     }
 
-    async uploadMedia(imagePath) {
+    /**
+     * Genera un texto alternativo (alt text) para la imagen
+     * Invita al lector a abrir Windy para ver en tiempo real el avance de las lluvias
+     */
+    generateAltText(filename) {
+        const alt = `Mapa de radar (${filename}) que muestra la situación de las precipitaciones. Abre Windy (https://www.windy.com/?radar) para ver en tiempo real cómo avanzan las lluvias y hacer zoom en tu localidad.`;
+        return alt;
+    }
+
+    async uploadMedia(imagePath, altText = null) {
         console.log(`📤 Subiendo imagen a Twitter: ${path.basename(imagePath)}`);
-        
+
         try {
             // Leer el archivo
             const imageBuffer = await fs.readFile(imagePath);
-            
+
             // Subir la imagen usando la API v1.1 (necesaria para media)
             const mediaId = await this.client.v1.uploadMedia(imageBuffer, {
                 mimeType: 'image/png',
             });
-            
+
             console.log(`✅ Imagen subida correctamente (Media ID: ${mediaId})`);
+
+            // Si se proporciona altText, intentar añadir metadata accesible
+            if (altText) {
+                try {
+                    await this.client.v1.createMediaMetadata(mediaId, { alt_text: { text: altText } });
+                    console.log('✅ Alt text añadido a la imagen');
+                } catch (metaErr) {
+                    console.warn('⚠️ No se pudo añadir alt text:', metaErr?.message || metaErr);
+                }
+            }
+
             return mediaId;
         } catch (error) {
             console.error('❌ Error al subir imagen:');
@@ -255,15 +275,18 @@ async function publishLatestCapture() {
         const userInfo = await publisher.initialize();
         
         // 3. Generar mensaje
-        const message = publisher.generateMessage(result.capture.filename);
+            const message = publisher.generateMessage(result.capture.filename);
+            // Generar alt text accesible para la imagen
+            const altText = publisher.generateAltText(result.capture.filename);
+            console.log(`   Alt text: ${altText}`);
         console.log('\n📝 Mensaje del tweet:');
         console.log('─'.repeat(60));
         console.log(message);
         console.log('─'.repeat(60));
         console.log('');
         
-        // 4. Subir imagen
-        const mediaId = await publisher.uploadMedia(result.capture.path);
+    // 4. Subir imagen (incluyendo alt text accesible)
+    const mediaId = await publisher.uploadMedia(result.capture.path, altText);
         
         // 5. Publicar tweet
         result.tweet = await publisher.publishTweet(message, mediaId);
